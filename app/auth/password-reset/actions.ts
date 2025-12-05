@@ -12,7 +12,7 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/auth/reset-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
   })
 
   if (error) {
@@ -39,13 +39,27 @@ export async function updatePassword(formData: FormData) {
     return { error: 'Password must be at least 6 characters long' }
   }
 
-  const { error } = await supabase.auth.updateUser({
+  // Check if user has a valid session
+  const { data: { user }, error: sessionError } = await supabase.auth.getUser()
+  
+  if (sessionError || !user) {
+    return { error: 'Your session has expired. Please request a new password reset link.' }
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
     password: password,
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: `Failed to update password: ${error.message}` }
   }
+
+  if (!data.user) {
+    return { error: 'Failed to update password. Please try again.' }
+  }
+
+  // Sign out to clear the recovery session
+  await supabase.auth.signOut()
 
   redirect('/auth/login?message=Password updated successfully! Please log in with your new password.')
 }

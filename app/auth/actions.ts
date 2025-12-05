@@ -68,13 +68,6 @@ export async function signup(formData: FormData) {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        role: role,
-      },
-    },
   })
 
   if (authError) {
@@ -84,6 +77,9 @@ export async function signup(formData: FormData) {
   if (!authData.user) {
     return { error: 'Failed to create user' }
   }
+
+  // Wait a moment for the auth user to be fully created
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   // Create profile in the profiles table
   const { error: profileError } = await supabase.from('profiles').insert({
@@ -95,8 +91,6 @@ export async function signup(formData: FormData) {
   })
 
   if (profileError) {
-    // If profile creation fails, try to delete the auth user to maintain consistency
-    await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {})
     return { error: 'Failed to create profile: ' + profileError.message }
   }
 
