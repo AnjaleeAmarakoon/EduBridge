@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { requestPasswordReset } from "../password-reset/actions";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function ForgotPassword() {
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const initialError = useMemo(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'link_expired') {
+      return 'The password reset link has expired. Please request a new one.';
+    }
+    return null;
+  }, [searchParams]);
+
+  const [error, setError] = useState<string | null>(initialError);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");

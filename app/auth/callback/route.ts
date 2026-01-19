@@ -23,14 +23,27 @@ export async function GET(request: Request) {
   const type = requestUrl.searchParams.get('type') as EmailOtpType | null
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/dashboard'
-
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  
+  // Check if there's an error from Supabase (expired link, etc.)
+  const error = requestUrl.searchParams.get('error')
+  const error_description = requestUrl.searchParams.get('error_description')
+  
+  if (error) {
+    // Handle expired or invalid links
+    if (error === 'access_denied' || error_description?.includes('expired')) {
+      return NextResponse.redirect(
+        new URL('/auth/forgot-password?error=link_expired', request.url)
+      )
+    }
+    return NextResponse.redirect(
+      new URL('/auth/login?error=invalid_link', request.url)
+    )
+  }
 
   const cookieStore = await cookies()
+  
+  // Store cookies that will be set by Supabase
+  const cookiesToSet: CookieOptions[] = []
   
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,19 +53,13 @@ export async function GET(request: Request) {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet: CookieOptions[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+        setAll(newCookies: CookieOptions[]) {
+          // Store cookies to be set later
+          cookiesToSet.push(...newCookies)
+          // Set them in the cookie store
+          newCookies.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options ?? {})
           })
-          // Also set in response
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options ?? {})
-          )
         },
       },
     }
@@ -63,8 +70,12 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      response = NextResponse.redirect(new URL('/dashboard', request.url))
-      return response
+      const redirectResponse = NextResponse.redirect(new URL('/dashboard', request.url))
+      // Set all auth cookies in the redirect response
+      cookiesToSet.forEach(({ name, value, options }) => {
+        redirectResponse.cookies.set(name, value, options ?? {})
+      })
+      return redirectResponse
     }
     
     return NextResponse.redirect(new URL('/auth/login?error=verification_failed', request.url))
@@ -79,12 +90,19 @@ export async function GET(request: Request) {
 
     if (!error) {
       if (type === 'recovery') {
-        // Redirect to reset password page with cookies set
-        response = NextResponse.redirect(new URL('/auth/reset-password', request.url))
-        return response
+        // Create redirect response with auth cookies
+        const redirectResponse = NextResponse.redirect(new URL('/auth/reset-password', request.url))
+        // Set all auth cookies in the redirect response
+        cookiesToSet.forEach(({ name, value, options }) => {
+          redirectResponse.cookies.set(name, value, options ?? {})
+        })
+        return redirectResponse
       }
-      response = NextResponse.redirect(new URL(next, request.url))
-      return response
+      const redirectResponse = NextResponse.redirect(new URL(next, request.url))
+      cookiesToSet.forEach(({ name, value, options }) => {
+        redirectResponse.cookies.set(name, value, options ?? {})
+      })
+      return redirectResponse
     }
     
     // If there's an error, redirect with error message
