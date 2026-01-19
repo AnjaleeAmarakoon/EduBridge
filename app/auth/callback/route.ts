@@ -1,6 +1,21 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { EmailOtpType } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+
+type CookieOptions = {
+  name: string
+  value: string
+  options?: {
+    path?: string
+    domain?: string
+    maxAge?: number
+    expires?: Date
+    httpOnly?: boolean
+    secure?: boolean
+    sameSite?: 'lax' | 'strict' | 'none'
+  }
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -9,14 +24,47 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
-  const supabase = await createClient()
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const cookieStore = await cookies()
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet: CookieOptions[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options ?? {})
+          })
+          // Also set in response
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options ?? {})
+          )
+        },
+      },
+    }
+  )
 
   // Handle email verification with code
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      response = NextResponse.redirect(new URL('/dashboard', request.url))
+      return response
     }
     
     return NextResponse.redirect(new URL('/auth/login?error=verification_failed', request.url))
@@ -31,10 +79,18 @@ export async function GET(request: Request) {
 
     if (!error) {
       if (type === 'recovery') {
-        return NextResponse.redirect(new URL('/auth/reset-password', request.url))
+        // Redirect to reset password page with cookies set
+        response = NextResponse.redirect(new URL('/auth/reset-password', request.url))
+        return response
       }
-      return NextResponse.redirect(new URL(next, request.url))
+      response = NextResponse.redirect(new URL(next, request.url))
+      return response
     }
+    
+    // If there's an error, redirect with error message
+    return NextResponse.redirect(
+      new URL('/auth/login?error=invalid_link', request.url)
+    )
   }
 
   return NextResponse.redirect(
