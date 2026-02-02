@@ -64,6 +64,17 @@ export async function signup(formData: FormData) {
     return { error: 'All fields are required' }
   }
 
+  // Check if profile already exists (in case user exists but profile was deleted)
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  if (existingProfile) {
+    return { error: 'An account with this email already exists. Please login instead.' }
+  }
+
   // Sign up the user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -71,6 +82,10 @@ export async function signup(formData: FormData) {
   })
 
   if (authError) {
+    // Handle specific error for user already registered
+    if (authError.message.includes('already registered')) {
+      return { error: 'This email is already registered. If you deleted your profile, please contact support to fully remove your account.' }
+    }
     return { error: authError.message }
   }
 
@@ -91,6 +106,8 @@ export async function signup(formData: FormData) {
   })
 
   if (profileError) {
+    // If profile creation fails, clean up by deleting the auth user
+    await supabase.auth.admin.deleteUser(authData.user.id)
     return { error: 'Failed to create profile: ' + profileError.message }
   }
 

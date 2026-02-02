@@ -1,106 +1,31 @@
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- ============================================
+-- ADD NEW TABLES TO EXISTING DATABASE
+-- ============================================
+-- Use this if you already have profiles and schools tables
+-- This only creates the NEW tables for all features
 
--- Create profiles table
-create table public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  email text not null,
-  first_name text not null,
-  last_name text not null,
-  role text not null check (role in ('school_admin', 'donor', 'volunteer', 'admin')),
-  phone text,
-  address text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- First, fix the profiles policies
+drop policy if exists "Public profiles are viewable by everyone" on profiles;
+drop policy if exists "Users can insert their own profile during signup" on profiles;
+drop policy if exists "Users can update own profile" on profiles;
+drop policy if exists "Users can delete own profile" on profiles;
 
--- Create schools table
-create table public.schools (
-  school_id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  name text not null,
-  type text not null check (type in ('Blind', 'Deaf', 'Rural')),
-  address text not null,
-  contact_person text not null,
-  phone text,
-  email text,
-  verified boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Set up Row Level Security (RLS)
-alter table public.profiles enable row level security;
-alter table public.schools enable row level security;
-
--- Profiles policies
--- Allow anyone to view profiles
 create policy "Public profiles are viewable by everyone"
   on profiles for select
   using (true);
 
--- Allow both authenticated and anonymous users to insert profiles during signup
 create policy "Users can insert their own profile during signup"
   on profiles for insert
   to authenticated, anon
   with check (true);
 
--- Allow users to update their own profile
 create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);
 
--- Allow users to delete their own profile
 create policy "Users can delete own profile"
   on profiles for delete
   using (auth.uid() = id);
-
--- Schools policies
-create policy "Schools are viewable by everyone"
-  on schools for select
-  using (true);
-
-create policy "School admins can insert their own school"
-  on schools for insert
-  with check (
-    auth.uid() = user_id 
-    and exists (
-      select 1 from profiles 
-      where profiles.id = auth.uid() 
-      and profiles.role = 'school_admin'
-    )
-  );
-
-create policy "School admins can update their own school"
-  on schools for update
-  using (
-    auth.uid() = user_id
-    and exists (
-      select 1 from profiles 
-      where profiles.id = auth.uid() 
-      and profiles.role = 'school_admin'
-    )
-  );
-
--- Function to handle updated_at
-create or replace function public.handle_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
-
--- Triggers for updated_at
-create trigger handle_profiles_updated_at
-  before update on profiles
-  for each row
-  execute procedure public.handle_updated_at();
-
-create trigger handle_schools_updated_at
-  before update on schools
-  for each row
-  execute procedure public.handle_updated_at();
 
 -- ============================================
 -- REQUESTS TABLE (School Needs)
@@ -116,14 +41,14 @@ create table public.requests (
   status text not null default 'Open' check (status in ('Open', 'In Progress', 'Fulfilled', 'Closed', 'Cancelled')),
   target_amount decimal(10, 2),
   raised_amount decimal(10, 2) default 0,
-  required_items jsonb, -- For goods: [{item: "Books", quantity: 100, unit: "pieces"}]
+  required_items jsonb,
   required_volunteers integer,
   volunteers_responded integer default 0,
   students_impacted integer,
   deadline_date date,
   image_url text,
   location text,
-  priority_score integer default 0, -- For matching algorithm
+  priority_score integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   fulfilled_at timestamp with time zone
@@ -139,8 +64,8 @@ create table public.request_responses (
   response_type text not null check (response_type in ('interested', 'committed', 'withdrawn')),
   message text,
   offered_amount decimal(10, 2),
-  offered_items jsonb, -- For goods donations
-  availability_dates jsonb, -- For volunteers: ["2026-02-10", "2026-02-15"]
+  offered_items jsonb,
+  availability_dates jsonb,
   status text not null default 'Pending' check (status in ('Pending', 'Accepted', 'Rejected', 'Completed')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -156,7 +81,7 @@ create table public.donations (
   school_id uuid references public.schools(school_id) on delete cascade not null,
   donation_type text not null check (donation_type in ('money', 'goods')),
   amount decimal(10, 2),
-  items_donated jsonb, -- For goods: [{item: "Books", quantity: 50, condition: "New"}]
+  items_donated jsonb,
   payment_method text check (payment_method in ('credit_card', 'debit_card', 'bank_transfer', 'paypal', 'stripe', 'cash')),
   payment_status text not null default 'Pending' check (payment_status in ('Pending', 'Processing', 'Completed', 'Failed', 'Refunded')),
   transaction_id text,
@@ -198,7 +123,7 @@ create table public.volunteer_sessions (
   materials_needed text[],
   notes text,
   is_recurring boolean default false,
-  recurring_pattern text, -- "weekly", "biweekly", etc.
+  recurring_pattern text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   completed_at timestamp with time zone
@@ -263,7 +188,7 @@ create table public.notifications (
   title text not null,
   content text not null,
   notification_type text not null check (notification_type in ('request', 'donation', 'session', 'message', 'rating', 'system', 'reminder')),
-  related_id uuid, -- ID of related request/donation/session/etc
+  related_id uuid,
   action_url text,
   is_read boolean default false,
   read_at timestamp with time zone,
@@ -284,9 +209,9 @@ create table public.ratings (
   rating integer not null check (rating >= 1 and rating <= 5),
   title text,
   comment text,
-  feedback_categories text[], -- ["punctual", "knowledgeable", "engaging", etc.]
+  feedback_categories text[],
   is_anonymous boolean default false,
-  is_verified boolean default false, -- Verified by admin/system
+  is_verified boolean default false,
   helpful_count integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -326,10 +251,8 @@ create trigger handle_ratings_updated_at
   execute procedure public.handle_updated_at();
 
 -- ============================================
--- ROW LEVEL SECURITY POLICIES
+-- ENABLE RLS ON ALL NEW TABLES
 -- ============================================
-
--- Enable RLS on all tables
 alter table public.requests enable row level security;
 alter table public.request_responses enable row level security;
 alter table public.donations enable row level security;
@@ -690,3 +613,9 @@ begin
   return v_notification_id;
 end;
 $$ language plpgsql security definer;
+
+-- Verify everything was created
+select 'Tables created:' as status;
+select table_name from information_schema.tables 
+where table_schema = 'public' and table_type = 'BASE TABLE'
+order by table_name;
