@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { login } from "../actions";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const message = searchParams.get("message");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -17,10 +17,31 @@ export default function Login() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await login(formData);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to dashboard
+      router.push(data.redirectTo || '/dashboard');
+      router.refresh();
+    } catch {
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   };

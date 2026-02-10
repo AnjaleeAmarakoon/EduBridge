@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { requestPasswordReset } from "../password-reset/actions";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -26,13 +25,30 @@ export default function ForgotPassword() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await requestPasswordReset(formData);
+    const emailValue = formData.get('email') as string;
+    setEmail(emailValue);
 
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-    } else {
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailValue }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to send reset email');
+        setLoading(false);
+        return;
+      }
+
       setSuccess(true);
+      setLoading(false);
+    } catch {
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   };

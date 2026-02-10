@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { respondToRequest } from '../actions';
 import { useRouter } from 'next/navigation';
 
 interface RespondButtonProps {
@@ -25,7 +24,11 @@ export default function RespondButton({ requestId, requestType }: RespondButtonP
     setError('');
 
     try {
-      const data: any = {
+      const data: {
+        response_type: 'interested' | 'committed';
+        message?: string;
+        offered_amount?: number;
+      } = {
         response_type: 'interested' as const,
         message: formData.message || undefined,
       };
@@ -34,18 +37,28 @@ export default function RespondButton({ requestId, requestType }: RespondButtonP
         data.offered_amount = parseFloat(formData.offered_amount);
       }
 
-      const result = await respondToRequest(requestId, data);
+      const response = await fetch(`/api/requests/${requestId}/respond`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setShowModal(false);
-        router.refresh();
-        alert('Your response has been sent successfully!');
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Failed to send response');
+        setLoading(false);
+        return;
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
+
+      setShowModal(false);
+      router.refresh();
+      alert('Your response has been sent successfully!');
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('An unexpected error occurred');
+      setError(error.message);
       setLoading(false);
     }
   };

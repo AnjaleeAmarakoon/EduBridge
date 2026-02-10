@@ -11,7 +11,7 @@ export interface CreateRequestInput {
   type: RequestType;
   urgency: Urgency;
   target_amount?: number;
-  required_items?: any;
+  required_items?: Record<string, unknown> | null;
   required_volunteers?: number;
   students_impacted?: number;
   deadline_date?: string;
@@ -196,8 +196,8 @@ export async function respondToRequest(requestId: string, data: {
   response_type: 'interested' | 'committed';
   message?: string;
   offered_amount?: number;
-  offered_items?: any;
-  availability_dates?: any;
+  offered_items?: Record<string, unknown> | null;
+  availability_dates?: Record<string, unknown> | null;
 }) {
   const supabase = await createClient();
 

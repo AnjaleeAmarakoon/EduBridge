@@ -133,8 +133,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
             description="Post a new resource or volunteer request"
             variant="primary"
             gradient="bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+            href="/requests/create"
             icon={
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             }
@@ -150,9 +151,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
             }
           />
           <ActionButton
-            title="Browse Volunteers"
-            description="Find available volunteer sessions"
+            title="Browse Requests"
+            description="View all active requests"
             gradient="bg-gradient-to-br from-green-50 to-emerald-50"
+            href="/requests"
             icon={
               <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

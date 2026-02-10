@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createRequest } from '../actions';
 import type { RequestCategory, RequestType, Urgency } from '@/lib/types/database';
 
 export default function CreateRequestPage() {
@@ -28,7 +27,18 @@ export default function CreateRequestPage() {
     setError('');
 
     try {
-      const data: any = {
+      const data: {
+        title: string;
+        description: string;
+        category: RequestCategory;
+        type: RequestType;
+        urgency: Urgency;
+        target_amount?: number;
+        required_volunteers?: number;
+        students_impacted?: number;
+        deadline_date?: string;
+        location?: string;
+      } = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -47,17 +57,28 @@ export default function CreateRequestPage() {
         data.required_volunteers = parseInt(formData.required_volunteers);
       }
 
-      const result = await createRequest(data);
+      const response = await fetch('/api/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        router.push('/requests');
-        router.refresh();
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Failed to create request');
+        setLoading(false);
+        return;
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
+
+      // Redirect to requests page
+      router.push(result.redirectTo || '/requests');
+      router.refresh();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('An unexpected error occurred');
+      setError(error.message);
       setLoading(false);
     }
   };
@@ -82,7 +103,7 @@ export default function CreateRequestPage() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Create New Request</h1>
           <p className="text-lg text-gray-600">
-            Share your school's needs with the community and connect with donors and volunteers
+            Share your school&apos;s needs with the community and connect with donors and volunteers
           </p>
         </div>
 

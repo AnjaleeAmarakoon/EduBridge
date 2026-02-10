@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { updatePassword } from "../password-reset/actions";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -14,10 +15,30 @@ export default function ResetPasswordForm() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await updatePassword(formData);
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirm_password') as string;
 
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password, confirmPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Password reset failed');
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to login with success message
+      router.push(data.redirectTo + '?message=' + encodeURIComponent(data.message));
+    } catch {
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   };

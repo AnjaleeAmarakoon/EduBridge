@@ -1,13 +1,30 @@
-import { getRequests } from './actions';
+import { RequestService } from '@/services/request.service';
 import RequestCard from '@/app/components/requests/RequestCard';
 import Link from 'next/link';
+import type { Request } from '@/lib/types/database';
+
+interface RequestWithSchool extends Request {
+  schools: {
+    name: string;
+    type: string;
+    address: string;
+  };
+}
 
 export default async function RequestsPage({
   searchParams,
 }: {
   searchParams: { category?: string; type?: string; urgency?: string; search?: string };
 }) {
-  const { requests, error } = await getRequests(searchParams);
+  let requests: RequestWithSchool[] = [];
+  let error: string | null = null;
+
+  try {
+    const result = await RequestService.getRequests(searchParams);
+    requests = (result.requests || []) as RequestWithSchool[];
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Failed to load requests';
+  }
 
   const categories = [
     'Education Materials',

@@ -2,6 +2,8 @@ export type UserRole = 'school_admin' | 'donor' | 'volunteer' | 'admin';
 
 export type SchoolType = 'Blind' | 'Deaf' | 'Rural';
 
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
 export type RequestCategory = 'Education Materials' | 'Infrastructure' | 'Technology' | 'Volunteer Teaching' | 'Special Equipment' | 'Food & Nutrition' | 'Healthcare' | 'Other';
 export type RequestType = 'money' | 'goods' | 'volunteer';
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -112,7 +114,7 @@ export interface Database {
           status: RequestStatus;
           target_amount: number | null;
           raised_amount: number;
-          required_items: any | null;
+          required_items: Json | null;
           required_volunteers: number | null;
           volunteers_responded: number;
           students_impacted: number | null;
@@ -135,7 +137,7 @@ export interface Database {
           status?: RequestStatus;
           target_amount?: number | null;
           raised_amount?: number;
-          required_items?: any | null;
+          required_items?: Json | null;
           required_volunteers?: number | null;
           volunteers_responded?: number;
           students_impacted?: number | null;
@@ -158,7 +160,7 @@ export interface Database {
           status?: RequestStatus;
           target_amount?: number | null;
           raised_amount?: number;
-          required_items?: any | null;
+          required_items?: Json | null;
           required_volunteers?: number | null;
           volunteers_responded?: number;
           students_impacted?: number | null;
@@ -179,8 +181,8 @@ export interface Database {
           response_type: ResponseType;
           message: string | null;
           offered_amount: number | null;
-          offered_items: any | null;
-          availability_dates: any | null;
+          offered_items: Json | null;
+          availability_dates: Json | null;
           status: ResponseStatus;
           created_at: string;
           updated_at: string;
@@ -192,8 +194,8 @@ export interface Database {
           response_type: ResponseType;
           message?: string | null;
           offered_amount?: number | null;
-          offered_items?: any | null;
-          availability_dates?: any | null;
+          offered_items?: Json | null;
+          availability_dates?: Json | null;
           status?: ResponseStatus;
           created_at?: string;
           updated_at?: string;
@@ -205,8 +207,8 @@ export interface Database {
           response_type?: ResponseType;
           message?: string | null;
           offered_amount?: number | null;
-          offered_items?: any | null;
-          availability_dates?: any | null;
+          offered_items?: Json | null;
+          availability_dates?: Json | null;
           status?: ResponseStatus;
           created_at?: string;
           updated_at?: string;
@@ -220,7 +222,7 @@ export interface Database {
           school_id: string;
           donation_type: DonationType;
           amount: number | null;
-          items_donated: any | null;
+          items_donated: Json | null;
           payment_method: PaymentMethod | null;
           payment_status: PaymentStatus;
           transaction_id: string | null;
@@ -243,7 +245,7 @@ export interface Database {
           school_id: string;
           donation_type: DonationType;
           amount?: number | null;
-          items_donated?: any | null;
+          items_donated?: Json | null;
           payment_method?: PaymentMethod | null;
           payment_status?: PaymentStatus;
           transaction_id?: string | null;
@@ -266,7 +268,7 @@ export interface Database {
           school_id?: string;
           donation_type?: DonationType;
           amount?: number | null;
-          items_donated?: any | null;
+          items_donated?: Json | null;
           payment_method?: PaymentMethod | null;
           payment_status?: PaymentStatus;
           transaction_id?: string | null;

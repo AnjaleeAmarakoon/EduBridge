@@ -49,8 +49,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Skip authentication checks for API routes, auth pages, and public paths
   if (
     !user &&
+    !request.nextUrl.pathname.startsWith('/api') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
     !request.nextUrl.pathname.startsWith('/_next') &&
     request.nextUrl.pathname !== '/'

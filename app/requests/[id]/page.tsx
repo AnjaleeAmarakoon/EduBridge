@@ -1,14 +1,50 @@
-import { getRequestById } from '../actions';
+import { RequestService } from '@/services/request.service';
 import Link from 'next/link';
 import RespondButton from './RespondButton';
 import { notFound } from 'next/navigation';
+import type { RequestType } from '@/lib/types/database';
+
+interface School {
+  name: string;
+  type: string;
+  address: string;
+  contact_person: string;
+}
+
+interface RequestDetail {
+  request_id: string;
+  title: string;
+  description: string;
+  category: string;
+  type: RequestType;
+  urgency: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: 'Open' | 'In Progress' | 'Fulfilled' | 'Closed' | 'Cancelled';
+  target_amount?: number | null;
+  raised_amount: number;
+  required_volunteers?: number | null;
+  volunteers_responded: number;
+  students_impacted?: number | null;
+  deadline_date?: string | null;
+  location?: string | null;
+  schools: School;
+}
 
 export default async function RequestDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const { request, responseCount, error } = await getRequestById(params.id);
+  let request: RequestDetail | null = null;
+  let responseCount = 0;
+  let error: string | null = null;
+
+  try {
+    const result = await RequestService.getRequestById(params.id);
+    request = result.request as RequestDetail;
+    responseCount = result.responseCount;
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Failed to load request';
+  }
 
   if (error || !request) {
     notFound();
@@ -18,14 +54,14 @@ export default async function RequestDetailPage({
     ? Math.min((request.raised_amount / request.target_amount) * 100, 100)
     : 0;
 
-  const urgencyColors = {
+  const urgencyColors: Record<string, string> = {
     Low: 'bg-blue-100 text-blue-700 border-blue-200',
     Medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     High: 'bg-orange-100 text-orange-700 border-orange-200',
     Critical: 'bg-red-100 text-red-700 border-red-200',
   };
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     Open: 'bg-green-100 text-green-700',
     'In Progress': 'bg-blue-100 text-blue-700',
     Fulfilled: 'bg-gray-100 text-gray-700',
@@ -96,7 +132,7 @@ export default async function RequestDetailPage({
                     <div>
                       <p className="text-sm text-gray-600">Deadline</p>
                       <p className="text-lg font-bold text-gray-900">
-                        {new Date(request.deadline_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(request.deadline_date as string).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
                   </div>
@@ -136,10 +172,10 @@ export default async function RequestDetailPage({
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Funding Progress</h2>
                   <div className="flex justify-between text-sm mb-3">
                     <span className="text-gray-600">
-                      Raised: <span className="font-bold text-green-600 text-lg">${request.raised_amount.toLocaleString()}</span>
+                      Raised: <span className="font-bold text-green-600 text-lg">${(request.raised_amount || 0).toLocaleString()}</span>
                     </span>
                     <span className="text-gray-600">
-                      Goal: <span className="font-bold text-lg">${request.target_amount.toLocaleString()}</span>
+                      Goal: <span className="font-bold text-lg">${(request.target_amount || 0).toLocaleString()}</span>
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-4">
@@ -152,7 +188,7 @@ export default async function RequestDetailPage({
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">${(request.target_amount - request.raised_amount).toLocaleString()} remaining</p>
+                  <p className="text-sm text-gray-600 mt-2">${((request.target_amount || 0) - (request.raised_amount || 0)).toLocaleString()} remaining</p>
                 </div>
               )}
 
@@ -165,12 +201,12 @@ export default async function RequestDetailPage({
                       <div className="w-full bg-gray-200 rounded-full h-4">
                         <div 
                           className="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min((request.volunteers_responded / request.required_volunteers) * 100, 100)}%` }}
+                          style={{ width: `${Math.min(((request.volunteers_responded || 0) / (request.required_volunteers || 1)) * 100, 100)}%` }}
                         ></div>
                       </div>
                     </div>
                     <span className="text-lg font-bold text-gray-900">
-                      {request.volunteers_responded} / {request.required_volunteers} volunteers
+                      {request.volunteers_responded || 0} / {request.required_volunteers || 0} volunteers
                     </span>
                   </div>
                 </div>
