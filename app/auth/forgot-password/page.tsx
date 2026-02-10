@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { requestPasswordReset } from "../password-reset/actions";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function ForgotPassword() {
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const initialError = useMemo(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'link_expired') {
+      return 'The password reset link has expired. Please request a new one.';
+    }
+    return null;
+  }, [searchParams]);
+
+  const [error, setError] = useState<string | null>(initialError);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -16,13 +25,30 @@ export default function ForgotPassword() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await requestPasswordReset(formData);
+    const emailValue = formData.get('email') as string;
+    setEmail(emailValue);
 
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-    } else {
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailValue }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to send reset email');
+        setLoading(false);
+        return;
+      }
+
       setSuccess(true);
+      setLoading(false);
+    } catch {
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   };

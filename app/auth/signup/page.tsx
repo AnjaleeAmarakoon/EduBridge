@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { signup } from "../actions";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -14,10 +15,51 @@ export default function Signup() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await signup(formData);
+    const firstName = formData.get('first_name') as string;
+    const lastName = formData.get('last_name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const role = formData.get('role') as string;
 
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firstName, lastName, email, password, role }),
+      });
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Server returned non-JSON response:', await response.text());
+        setError('Server error: Expected JSON response but got HTML. Check console for details.');
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Signup failed:', data);
+        setError(data.error || 'Signup failed');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Signup successful:', data);
+
+      // Redirect based on email confirmation requirement
+      if (data.requiresEmailConfirmation) {
+        router.push(`${data.redirectTo}?message=${encodeURIComponent(data.message)}`);
+      } else {
+        router.push(data.redirectTo || '/dashboard');
+      }
+      router.refresh();
+    } catch (err) {
+      console.error('Unexpected signup error:', err);
+      setError('An unexpected error occurred. Please check the console for details.');
       setLoading(false);
     }
   };

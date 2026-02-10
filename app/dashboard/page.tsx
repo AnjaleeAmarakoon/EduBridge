@@ -36,6 +36,11 @@ export default async function Dashboard() {
       .eq("user_id", user.id)
       .single();
     schoolData = data;
+    
+    // Redirect to school registration if no school found
+    if (!schoolData) {
+      redirect("/school/register");
+    }
   }
 
   return (

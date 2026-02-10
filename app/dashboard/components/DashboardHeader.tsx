@@ -1,5 +1,7 @@
-import React from 'react';
-import { logout } from '@/app/auth/actions';
+'use client';
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface DashboardHeaderProps {
   firstName: string;
@@ -8,6 +10,34 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ firstName, lastName, email }: DashboardHeaderProps) {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        router.push(data.redirectTo || '/auth/login');
+        router.refresh();
+      } else {
+        console.error('Logout failed:', data.error);
+        setLoggingOut(false);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      setLoggingOut(false);
+    }
+  };
   return (
     <header className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
@@ -51,20 +81,16 @@ export default function DashboardHeader({ firstName, lastName, email }: Dashboar
           </div>
 
           {/* Logout Button */}
-          <form action={async () => {
-            'use server';
-            await logout();
-          }}>
-            <button
-              type="submit"
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout
-            </button>
-          </form>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            {loggingOut ? 'Logging out...' : 'Logout'}
+          </button>
         </div>
       </div>
     </header>

@@ -17,6 +17,12 @@ export default function Home() {
           </Link>
           <div className="flex items-center space-x-4">
             <Link
+              href="/requests"
+              className="text-gray-700 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+            >
+              Browse Requests
+            </Link>
+            <Link
               href="/auth/login"
               className="text-gray-700 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition"
             >
