@@ -19,7 +19,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
         <div className="relative z-10">
           <h2 className="text-4xl font-bold mb-3">
-            Welcome back, {firstName}! {isOrganization ? '🏢' : '🎓'}
+            Welcome back, {firstName}! 
           </h2>
           {isOrganization && organizationName && (
             <p className="text-purple-100 text-lg mb-4">{organizationName}</p>
