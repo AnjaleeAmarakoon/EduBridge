@@ -117,8 +117,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
             gradient="bg-gradient-to-br from-blue-500 to-blue-600 text-white"
             href="/requests/create"
             icon={
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
             }
           />
@@ -169,9 +169,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
             <input
               type="text"
               placeholder="Search requests..."
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
               <option>All Status</option>
               <option>Pending</option>
               <option>Accepted</option>

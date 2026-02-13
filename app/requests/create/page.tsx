@@ -187,6 +187,17 @@ export default function CreateRequestPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-900 transition font-medium"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Dashboard
+        </button>
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-4">Create New Request</h1>
@@ -214,7 +225,7 @@ export default function CreateRequestPage() {
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
               placeholder="e.g., Braille Learning Materials for 45 Students"
             />
           </div>
@@ -230,7 +241,7 @@ export default function CreateRequestPage() {
               rows={6}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
               placeholder="Provide detailed information about your request, why it's needed, and how it will help your students..."
             />
           </div>
@@ -246,7 +257,7 @@ export default function CreateRequestPage() {
                 required
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as RequestCategory })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900"
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -263,7 +274,7 @@ export default function CreateRequestPage() {
                 required
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value as RequestType })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900"
               >
                 <option value="money">Money</option>
                 <option value="goods">Goods</option>
@@ -286,7 +297,7 @@ export default function CreateRequestPage() {
                 step="0.01"
                 value={formData.target_amount}
                 onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
                 placeholder="5000"
               />
             </div>
@@ -307,7 +318,7 @@ export default function CreateRequestPage() {
                         value={item.item}
                         onChange={(e) => updateItem(index, 'item', e.target.value)}
                         required
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition mb-2"
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition mb-2 text-slate-900 placeholder:text-slate-400"
                       />
                       <div className="flex gap-2">
                         <input
@@ -317,12 +328,12 @@ export default function CreateRequestPage() {
                           onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                           min="1"
                           required
-                          className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                          className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
                         />
                         <select
                           value={item.unit}
                           onChange={(e) => updateItem(index, 'unit', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900"
                         >
                           <option value="pieces">Pieces</option>
                           <option value="boxes">Boxes</option>
@@ -371,7 +382,7 @@ export default function CreateRequestPage() {
                 min="1"
                 value={formData.required_volunteers}
                 onChange={(e) => setFormData({ ...formData, required_volunteers: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
                 placeholder="3"
               />
             </div>
@@ -388,7 +399,7 @@ export default function CreateRequestPage() {
                 required
                 value={formData.urgency}
                 onChange={(e) => setFormData({ ...formData, urgency: e.target.value as Urgency })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900"
               >
                 {urgencies.map((urg) => (
                   <option key={urg} value={urg}>{urg}</option>
@@ -406,7 +417,7 @@ export default function CreateRequestPage() {
                 min="1"
                 value={formData.students_impacted}
                 onChange={(e) => setFormData({ ...formData, students_impacted: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
                 placeholder="45"
               />
             </div>
@@ -423,7 +434,7 @@ export default function CreateRequestPage() {
                 id="deadline_date"
                 value={formData.deadline_date}
                 onChange={(e) => setFormData({ ...formData, deadline_date: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900"
               />
             </div>
 
@@ -436,7 +447,7 @@ export default function CreateRequestPage() {
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
                 placeholder="New York, NY"
               />
             </div>
@@ -452,7 +463,7 @@ export default function CreateRequestPage() {
               id="image_url"
               value={formData.image_url}
               onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
               placeholder="https://example.com/image.jpg"
             />
             <p className="mt-2 text-sm text-slate-500">

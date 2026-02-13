@@ -180,9 +180,6 @@ export default function Login() {
                   )}
                 </button>
               </div>
-              {password.length > 0 && password.length < 8 && (
-                <p className="mt-1 text-xs text-amber-600">Password must be at least 8 characters</p>
-              )}
             </div>
           </div>
 
