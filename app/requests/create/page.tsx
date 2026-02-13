@@ -287,7 +287,7 @@ export default function CreateRequestPage() {
           {formData.type === 'money' && (
             <div className="mb-6">
               <label htmlFor="target_amount" className="block text-sm font-semibold text-slate-900 mb-2">
-                Target Amount ($) *
+                Target Amount (LKR) *
               </label>
               <input
                 type="number"
@@ -448,7 +448,7 @@ export default function CreateRequestPage() {
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-900 placeholder:text-slate-400"
-                placeholder="New York, NY"
+                placeholder="Moratuwa, Sri Lanka"
               />
             </div>
           </div>

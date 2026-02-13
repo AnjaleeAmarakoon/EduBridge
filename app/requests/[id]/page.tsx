@@ -1,8 +1,9 @@
 import { RequestService } from '@/services/request.service';
 import Link from 'next/link';
 import RespondButton from './RespondButton';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { RequestType } from '@/lib/types/database';
+import { createClient } from '@/lib/supabase/server';
 
 interface School {
   name: string;
@@ -34,6 +35,16 @@ export default async function RequestDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Authentication check - require sign in to view details
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login?redirect=/requests/" + (await params).id);
+  }
+
   const { id } = await params;
   let request: RequestDetail | null = null;
   let responseCount = 0;

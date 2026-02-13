@@ -32,13 +32,16 @@ export default function Login() {
       return;
     }
 
+    // Get redirect URL from query params
+    const redirectTo = searchParams.get('redirect') || '/dashboard';
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, redirectTo }),
       });
 
       const data = await response.json();
@@ -90,6 +93,12 @@ export default function Login() {
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-xl" onSubmit={handleSubmit}>
           <div className="space-y-4">
+            {searchParams.get('redirect') && (
+              <div className="bg-blue-50 border border-blue-400 text-blue-700 px-4 py-3 rounded relative">
+                Please sign in to view full request details
+              </div>
+            )}
+
             {message && (
               <div className="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative">
                 {message}

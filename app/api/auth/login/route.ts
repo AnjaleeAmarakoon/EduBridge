@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, redirectTo } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       { 
         success: true,
         user: result.user,
-        redirectTo: '/dashboard'
+        redirectTo: redirectTo || '/dashboard'
       },
       { status: 200 }
     );

@@ -39,9 +39,9 @@ export default async function RequestsPage({
   ];
 
   const types = [
-    { value: 'money', label: '💰 Money', color: 'green' },
-    { value: 'goods', label: '📦 Goods', color: 'purple' },
-    { value: 'volunteer', label: '👥 Volunteer', color: 'blue' },
+    { value: 'money', label: 'Money', color: 'green' },
+    { value: 'goods', label: 'Goods', color: 'purple' },
+    { value: 'volunteer', label: 'Volunteer', color: 'blue' },
   ];
 
   const urgencies = ['Low', 'Medium', 'High', 'Critical'];
