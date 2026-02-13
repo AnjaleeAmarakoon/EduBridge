@@ -48,7 +48,7 @@ export default function RequestCard({ request }: RequestCardProps) {
                 {request.urgency}
               </span>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeColors[request.type]}`}>
-                {request.type === 'money' ? '💰 Money' : request.type === 'goods' ? '📦 Goods' : '👥 Volunteer'}
+                {request.type === 'money' ? 'Money' : request.type === 'goods' ? 'Goods' : 'Volunteer'}
               </span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 hover:text-purple-600 transition">

@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { RequestCategory, RequestType, Urgency } from '@/lib/types/database';
 
+export interface RequiredItem {
+  item: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface CreateRequestInput {
   title: string;
   description: string;
@@ -11,7 +17,7 @@ export interface CreateRequestInput {
   type: RequestType;
   urgency: Urgency;
   target_amount?: number;
-  required_items?: Record<string, unknown> | null;
+  required_items?: RequiredItem[] | null;
   required_volunteers?: number;
   students_impacted?: number;
   deadline_date?: string;

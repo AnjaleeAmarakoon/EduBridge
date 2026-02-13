@@ -1,15 +1,39 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import Link from 'next/link';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
+import type { Request } from '@/lib/types/database';
 
 interface SchoolAdminDashboardProps {
   schoolName: string;
   firstName: string;
+  requests: Request[];
 }
 
-export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAdminDashboardProps) {
+export default function SchoolAdminDashboard({ schoolName, firstName, requests }: SchoolAdminDashboardProps) {
+  // Calculate stats from real data
+  const stats = useMemo(() => {
+    const totalRequests = requests.length;
+    const openRequests = requests.filter(r => r.status === 'Open').length;
+    const inProgressRequests = requests.filter(r => r.status === 'In Progress').length;
+    const fulfilledRequests = requests.filter(r => r.status === 'Fulfilled').length;
+    const totalResponses = requests.reduce((sum, r) => sum + r.volunteers_responded, 0);
+    
+    // Calculate active requests (Open + In Progress)
+    const activeRequests = openRequests + inProgressRequests;
+    
+    return {
+      totalRequests,
+      openRequests,
+      inProgressRequests,
+      fulfilledRequests,
+      activeRequests,
+      totalResponses,
+    };
+  }, [requests]);
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -36,9 +60,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Requests"
-            value={24}
+            value={stats.totalRequests}
             color="blue"
-            trend={{ value: '+3 this month', isPositive: true }}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -46,8 +69,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
             }
           />
           <StatCard
-            title="Pending Requests"
-            value={7}
+            title="Active Requests"
+            value={stats.activeRequests}
             color="orange"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,10 +79,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
             }
           />
           <StatCard
-            title="Completed Requests"
-            value={12}
+            title="Fulfilled Requests"
+            value={stats.fulfilledRequests}
             color="green"
-            trend={{ value: '+2 this week', isPositive: true }}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -67,52 +89,12 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
             }
           />
           <StatCard
-            title="Upcoming Sessions"
-            value={5}
+            title="Total Responses"
+            value={stats.totalResponses}
             color="purple"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Unread Messages"
-            value={8}
-            color="indigo"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Active Donors"
-            value={18}
-            color="pink"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Average Rating"
-            value="4.8"
-            color="teal"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            }
-          />
-          <StatCard
-            title="Active Volunteers"
-            value={9}
-            color="red"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             }
           />
@@ -212,74 +194,93 @@ export default function SchoolAdminDashboard({ schoolName, firstName }: SchoolAd
               </tr>
             </thead>
             <tbody>
-              {[
-                { title: 'Science Lab Equipment', category: 'Resources', urgency: 'High', status: 'Pending', date: '2026-01-15', interested: 12 },
-                { title: 'Math Tutoring Program', category: 'Volunteer', urgency: 'Medium', status: 'Accepted', date: '2026-01-12', interested: 5 },
-                { title: 'Library Books Donation', category: 'Resources', urgency: 'Low', status: 'In Progress', date: '2026-01-10', interested: 8 },
-              ].map((request, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="font-medium text-gray-900">{request.title}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                      {request.category}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      request.urgency === 'High' ? 'bg-red-100 text-red-700' :
-                      request.urgency === 'Medium' ? 'bg-orange-100 text-orange-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {request.urgency}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                      request.status === 'Accepted' ? 'bg-green-100 text-green-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{request.date}</td>
-                  <td className="py-4 px-4">
-                    <span className="flex items-center text-sm font-medium text-gray-900">
-                      <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              {requests.length > 0 ? (
+                requests.slice(0, 10).map((request) => {
+                  const formattedDate = new Date(request.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  });
+
+                  return (
+                    <tr key={request.request_id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <Link href={`/requests/${request.request_id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                          {request.title}
+                        </Link>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          {request.category}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          request.urgency === 'Critical' ? 'bg-red-100 text-red-700' :
+                          request.urgency === 'High' ? 'bg-orange-100 text-orange-700' :
+                          request.urgency === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {request.urgency}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          request.status === 'Open' ? 'bg-blue-100 text-blue-700' :
+                          request.status === 'In Progress' ? 'bg-yellow-100 text-yellow-700' :
+                          request.status === 'Fulfilled' ? 'bg-green-100 text-green-700' :
+                          request.status === 'Closed' ? 'bg-gray-100 text-gray-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{formattedDate}</td>
+                      <td className="py-4 px-4">
+                        <span className="flex items-center text-sm font-medium text-gray-900">
+                          <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          {request.volunteers_responded}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex gap-2">
+                          <Link href={`/requests/${request.request_id}`} className="p-2 hover:bg-blue-50 rounded-lg transition" title="View">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </Link>
+                          <button className="p-2 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      {request.interested}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 hover:bg-blue-50 rounded-lg transition" title="View">
-                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button className="p-2 hover:bg-green-50 rounded-lg transition" title="Edit">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button className="p-2 hover:bg-purple-50 rounded-lg transition" title="Message">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                      </button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg transition" title="Delete">
-                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <p className="text-gray-500 text-lg font-medium mb-2">No requests yet</p>
+                      <p className="text-gray-400 mb-4">Create your first request to get started</p>
+                      <Link
+                        href="/requests/create"
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Create Request
+                      </Link>
                     </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
