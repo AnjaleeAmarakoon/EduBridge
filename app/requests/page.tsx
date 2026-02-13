@@ -14,13 +14,14 @@ interface RequestWithSchool extends Request {
 export default async function RequestsPage({
   searchParams,
 }: {
-  searchParams: { category?: string; type?: string; urgency?: string; search?: string };
+  searchParams: Promise<{ category?: string; type?: string; urgency?: string; search?: string }>;
 }) {
+  const params = await searchParams;
   let requests: RequestWithSchool[] = [];
   let error: string | null = null;
 
   try {
-    const result = await RequestService.getRequests(searchParams);
+    const result = await RequestService.getRequests(params);
     requests = (result.requests || []) as RequestWithSchool[];
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load requests';
@@ -62,7 +63,7 @@ export default async function RequestsPage({
                 <input
                   type="text"
                   name="search"
-                  defaultValue={searchParams.search}
+                  defaultValue={params.search}
                   placeholder="Search requests..."
                   className="w-full px-6 py-4 rounded-full text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-purple-300 pr-12"
                 />
@@ -99,9 +100,9 @@ export default async function RequestsPage({
                   {types.map((type) => (
                     <Link
                       key={type.value}
-                      href={`/requests?${new URLSearchParams({ ...searchParams, type: type.value }).toString()}`}
+                      href={`/requests?${new URLSearchParams({ ...params, type: type.value }).toString()}`}
                       className={`block px-4 py-2 rounded-lg text-sm transition ${
-                        searchParams.type === type.value
+                        params.type === type.value
                           ? `bg-${type.color}-100 text-${type.color}-700 font-medium`
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
@@ -109,7 +110,7 @@ export default async function RequestsPage({
                       {type.label}
                     </Link>
                   ))}
-                  {searchParams.type && (
+                  {params.type && (
                     <Link
                       href="/requests"
                       className="block px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100"
@@ -127,9 +128,9 @@ export default async function RequestsPage({
                   {categories.map((category) => (
                     <Link
                       key={category}
-                      href={`/requests?${new URLSearchParams({ ...searchParams, category }).toString()}`}
+                      href={`/requests?${new URLSearchParams({ ...params, category }).toString()}`}
                       className={`block px-4 py-2 rounded-lg text-sm transition ${
-                        searchParams.category === category
+                        params.category === category
                           ? 'bg-purple-100 text-purple-700 font-medium'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
@@ -137,9 +138,9 @@ export default async function RequestsPage({
                       {category}
                     </Link>
                   ))}
-                  {searchParams.category && (
+                  {params.category && (
                     <Link
-                      href={`/requests?${new URLSearchParams({ ...searchParams, category: '' }).toString()}`}
+                      href={`/requests?${new URLSearchParams({ ...params, category: '' }).toString()}`}
                       className="block px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100"
                     >
                       Clear filter
@@ -155,9 +156,9 @@ export default async function RequestsPage({
                   {urgencies.map((urgency) => (
                     <Link
                       key={urgency}
-                      href={`/requests?${new URLSearchParams({ ...searchParams, urgency }).toString()}`}
+                      href={`/requests?${new URLSearchParams({ ...params, urgency }).toString()}`}
                       className={`block px-4 py-2 rounded-lg text-sm transition ${
-                        searchParams.urgency === urgency
+                        params.urgency === urgency
                           ? 'bg-orange-100 text-orange-700 font-medium'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
@@ -165,9 +166,9 @@ export default async function RequestsPage({
                       {urgency}
                     </Link>
                   ))}
-                  {searchParams.urgency && (
+                  {params.urgency && (
                     <Link
-                      href={`/requests?${new URLSearchParams({ ...searchParams, urgency: '' }).toString()}`}
+                      href={`/requests?${new URLSearchParams({ ...params, urgency: '' }).toString()}`}
                       className="block px-4 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100"
                     >
                       Clear filter
@@ -177,7 +178,7 @@ export default async function RequestsPage({
               </div>
 
               {/* Clear All */}
-              {(searchParams.type || searchParams.category || searchParams.urgency || searchParams.search) && (
+              {(params.type || params.category || params.urgency || params.search) && (
                 <Link
                   href="/requests"
                   className="block w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition text-center"
@@ -200,10 +201,10 @@ export default async function RequestsPage({
                     'No requests found'
                   )}
                 </h2>
-                {(searchParams.type || searchParams.category || searchParams.urgency) && (
+                {(params.type || params.category || params.urgency) && (
                   <p className="text-gray-600 mt-1">
                     Filtered by:{' '}
-                    {[searchParams.type, searchParams.category, searchParams.urgency]
+                    {[params.type, params.category, params.urgency]
                       .filter(Boolean)
                       .join(', ')}
                   </p>

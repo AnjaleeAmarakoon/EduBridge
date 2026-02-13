@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -18,13 +18,12 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [emailValid, setEmailValid] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
 
   // Real-time email validation
-  useEffect(() => {
+  const emailValid = useMemo(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    setEmailValid(emailRegex.test(email));
+    return emailRegex.test(email);
   }, [email]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,7 +50,9 @@ export default function ForgotPassword() {
 
       if (!response.ok) {
         // Smart error messages
-        if (response.status === 404) {
+        if (response.status === 429 || data.errorType === 'rate_limit') {
+          setError('Too many password reset attempts. Please wait 5-10 minutes before trying again. If you already received an email, check your spam folder.');
+        } else if (response.status === 404) {
           setError('No account found with this email address.');
         } else {
           setError(data.error || 'Unable to send reset email. Please try again.');
@@ -141,8 +142,23 @@ export default function ForgotPassword() {
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-xl" onSubmit={handleSubmit}>
           <div className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-                {error}
+              <div className={`border px-4 py-3 rounded relative ${
+                error.toLowerCase().includes('too many') || error.toLowerCase().includes('wait')
+                  ? 'bg-amber-50 border-amber-400 text-amber-800'
+                  : 'bg-red-50 border-red-400 text-red-700'
+              }`}>
+                <div className="flex items-start">
+                  {error.toLowerCase().includes('too many') || error.toLowerCase().includes('wait') ? (
+                    <svg className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span className="text-sm">{error}</span>
+                </div>
               </div>
             )}
 
@@ -205,6 +221,22 @@ export default function ForgotPassword() {
               )}
               {loading ? "Sending..." : "Send reset link"}
             </button>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <svg className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Helpful tips:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Check your spam/junk folder if you don&apos;t see the email</li>
+                  <li>The reset link expires in 1 hour</li>
+                  <li>You can only request a few resets per hour</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="text-center text-sm">

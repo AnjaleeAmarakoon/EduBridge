@@ -6,15 +6,29 @@ import type { EmailOtpType } from '@supabase/supabase-js'
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: { error?: string; token_hash?: string; type?: string }
+  searchParams: Promise<{ error?: string; token_hash?: string; type?: string; verified?: string }>
 }) {
   const supabase = await createClient()
+  const params = await searchParams
   
-  // If there's a token_hash in the URL, verify it first
-  if (searchParams.token_hash && searchParams.type) {
+  console.log('[ResetPassword] Page loaded with params:', params);
+  
+  // Check if user has a valid session first (most common case after callback)
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  console.log('[ResetPassword] Session exists:', !!session);
+  
+  // If session exists and verified flag is set, show the form directly
+  if (session && params.verified === 'true') {
+    console.log('[ResetPassword] Showing form - verified session');
+    return <ResetPasswordForm />
+  }
+  
+  // If there's a token_hash in the URL, verify it first (alternative flow)
+  if (params.token_hash && params.type) {
     const { error } = await supabase.auth.verifyOtp({
-      type: searchParams.type as EmailOtpType,
-      token_hash: searchParams.token_hash,
+      type: params.type as EmailOtpType,
+      token_hash: params.token_hash,
     })
     
     if (error) {
@@ -55,10 +69,12 @@ export default async function ResetPasswordPage({
     return <ResetPasswordForm />
   }
   
-  // No token in URL, check if user has a session
-  const { data: { session } } = await supabase.auth.getSession()
+  // If there's a valid session without verified flag, still allow password reset
+  if (session) {
+    return <ResetPasswordForm />
+  }
 
-  if (searchParams.error === 'invalid_token') {
+  if (params.error === 'invalid_token') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-xl">
@@ -90,37 +106,34 @@ export default async function ResetPasswordPage({
     )
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-xl">
-          <div>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+  // No valid session or token - redirect to request a reset link
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-xl">
+        <div>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-yellow-100 rounded-xl flex items-center justify-center">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Reset link required
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Please click the reset link sent to your email to continue.
-            </p>
           </div>
-          <div className="mt-8">
-            <Link
-              href="/auth/forgot-password"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition"
-            >
-              Request Reset Link
-            </Link>
-          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Reset link required
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Please click the reset link sent to your email to continue.
+          </p>
+        </div>
+        <div className="mt-8">
+          <Link
+            href="/auth/forgot-password"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition"
+          >
+            Request Reset Link
+          </Link>
         </div>
       </div>
-    )
-  }
-
-  return <ResetPasswordForm />
+    </div>
+  )
 }

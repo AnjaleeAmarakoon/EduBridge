@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -10,16 +10,15 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [emailValid, setEmailValid] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const message = searchParams.get("message");
 
   // Real-time email validation
-  useEffect(() => {
+  const emailValid = useMemo(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    setEmailValid(emailRegex.test(email));
+    return emailRegex.test(email);
   }, [email]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

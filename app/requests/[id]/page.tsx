@@ -32,14 +32,15 @@ interface RequestDetail {
 export default async function RequestDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   let request: RequestDetail | null = null;
   let responseCount = 0;
   let error: string | null = null;
 
   try {
-    const result = await RequestService.getRequestById(params.id);
+    const result = await RequestService.getRequestById(id);
     request = result.request as RequestDetail;
     responseCount = result.responseCount;
   } catch (err) {

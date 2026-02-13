@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -26,26 +26,22 @@ export default function ResetPasswordForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordStrength, setPasswordStrength] = useState({ strength: 0, label: '', color: '' });
-  const [passwordsMatch, setPasswordsMatch] = useState(true);
   const router = useRouter();
 
   // Real-time password strength
-  useEffect(() => {
+  const passwordStrength = useMemo(() => {
     if (password.length > 0) {
-      setPasswordStrength(calculatePasswordStrength(password));
-    } else {
-      setPasswordStrength({ strength: 0, label: '', color: '' });
+      return calculatePasswordStrength(password);
     }
+    return { strength: 0, label: '', color: '' };
   }, [password]);
 
   // Real-time password match validation
-  useEffect(() => {
+  const passwordsMatch = useMemo(() => {
     if (confirmPassword.length > 0) {
-      setPasswordsMatch(password === confirmPassword);
-    } else {
-      setPasswordsMatch(true);
+      return password === confirmPassword;
     }
+    return true;
   }, [password, confirmPassword]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

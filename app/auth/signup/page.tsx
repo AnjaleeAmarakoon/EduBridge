@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -27,24 +27,21 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [emailValid, setEmailValid] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({ strength: 0, label: '', color: '' });
   const router = useRouter();
 
   // Real-time email validation
-  useEffect(() => {
+  const emailValid = useMemo(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    setEmailValid(emailRegex.test(email));
+    return emailRegex.test(email);
   }, [email]);
 
   // Real-time password strength
-  useEffect(() => {
+  const passwordStrength = useMemo(() => {
     if (password.length > 0) {
-      setPasswordStrength(calculatePasswordStrength(password));
-    } else {
-      setPasswordStrength({ strength: 0, label: '', color: '' });
+      return calculatePasswordStrength(password);
     }
+    return { strength: 0, label: '', color: '' };
   }, [password]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
