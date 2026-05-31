@@ -20,6 +20,14 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
   const [deleting, setDeleting] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    schoolName: schoolName,
+    email: '',
+    phone: '',
+    location: '',
+    description: '',
+  });
 
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -147,6 +155,50 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
     }
   };
 
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/schools/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      setUpdatingProfile(false);
+      setSaving(false);
+      alert('School profile updated successfully!');
+    } catch (error) {
+      console.error('Profile update error:', error);
+      alert(`Error updating profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setSaving(false);
+    }
+  };
+
+  const handleOpenProfileModal = async () => {
+    try {
+      const response = await fetch('/api/schools/me');
+      const data = await response.json();
+      
+      if (response.ok && data.school) {
+        setProfileData({
+          schoolName: data.school.name || schoolName,
+          email: data.school.email || '',
+          phone: data.school.phone || '',
+          location: data.school.address || '',
+          description: data.school.description || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching school data:', error);
+    }
+    setUpdatingProfile(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -260,6 +312,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
             title="Update Profile"
             description="Manage school information"
             gradient="bg-gradient-to-br from-orange-50 to-red-50"
+            onClick={handleOpenProfileModal}
             icon={
               <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -703,28 +756,53 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
       )}
 
       {editingRequest && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Edit Request</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={editingRequest.title}
-                  onChange={(e) => setEditingRequest({...editingRequest, title: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+        <>
+          <style>{`
+            .edit-modal-placeholder::placeholder {
+              color: #000000 !important;
+              opacity: 1 !important;
+            }
+            .edit-modal-placeholder::-webkit-input-placeholder {
+              color: #000000 !important;
+              opacity: 1 !important;
+            }
+            .edit-modal-placeholder::-moz-placeholder {
+              color: #000000 !important;
+              opacity: 1 !important;
+            }
+            .edit-modal-placeholder:-ms-input-placeholder {
+              color: #000000 !important;
+              opacity: 1 !important;
+            }
+            .edit-modal-placeholder:-moz-placeholder {
+              color: #000000 !important;
+              opacity: 1 !important;
+            }
+          `}</style>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Edit Request</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    placeholder="Enter request title"
+                    value={editingRequest.title}
+                    onChange={(e) => setEditingRequest({...editingRequest, title: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 edit-modal-placeholder"
+                  />
+                </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
+                  placeholder="Enter detailed description of the request"
                   value={editingRequest.description}
                   onChange={(e) => setEditingRequest({...editingRequest, description: e.target.value})}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 edit-modal-placeholder"
                 />
               </div>
 
@@ -734,8 +812,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <select
                     value={editingRequest.category}
                     onChange={(e) => setEditingRequest({...editingRequest, category: e.target.value as any})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
+                    <option value="" disabled>Select category</option>
                     <option>Education Materials</option>
                     <option>Infrastructure</option>
                     <option>Technology</option>
@@ -752,8 +831,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <select
                     value={editingRequest.type}
                     onChange={(e) => setEditingRequest({...editingRequest, type: e.target.value as any})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
+                    <option value="" disabled>Select type</option>
                     <option value="money">Money</option>
                     <option value="goods">Goods</option>
                     <option value="volunteer">Volunteer</option>
@@ -765,8 +845,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <select
                     value={editingRequest.urgency}
                     onChange={(e) => setEditingRequest({...editingRequest, urgency: e.target.value as any})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
+                    <option value="" disabled>Select urgency</option>
                     <option>Low</option>
                     <option>Medium</option>
                     <option>High</option>
@@ -778,9 +859,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                   <input
                     type="text"
+                    placeholder="Enter school location"
                     value={editingRequest.location || ''}
                     onChange={(e) => setEditingRequest({...editingRequest, location: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 edit-modal-placeholder"
                   />
                 </div>
 
@@ -798,9 +880,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <label className="block text-sm font-medium text-gray-700 mb-1">Students Impacted</label>
                   <input
                     type="number"
+                    placeholder="e.g., 150"
                     value={editingRequest.students_impacted || ''}
                     onChange={(e) => setEditingRequest({...editingRequest, students_impacted: parseInt(e.target.value) || undefined})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 edit-modal-placeholder"
                   />
                 </div>
               </div>
@@ -834,6 +917,116 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
             </div>
           </div>
         </div>
+        </>
+      )}
+
+      {/* Update Profile Modal */}
+      {updatingProfile && (
+        <>
+          <style>{`
+            .profile-modal-placeholder::placeholder {
+              color: #1f2937 !important;
+              opacity: 1 !important;
+            }
+            .profile-modal-placeholder::-webkit-input-placeholder {
+              color: #1f2937 !important;
+              opacity: 1 !important;
+            }
+            .profile-modal-placeholder::-moz-placeholder {
+              color: #1f2937 !important;
+              opacity: 1 !important;
+            }
+          `}</style>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Update School Profile</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
+                  <input
+                    type="text"
+                    placeholder="Enter school name"
+                    value={profileData.schoolName}
+                    onChange={(e) => setProfileData({...profileData, schoolName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    placeholder="Enter school email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="Enter school phone number"
+                    value={profileData.phone}
+                    onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <input
+                    type="text"
+                    placeholder="Enter school location"
+                    value={profileData.location}
+                    onChange={(e) => setProfileData({...profileData, location: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    placeholder="Enter school description and details"
+                    value={profileData.description}
+                    onChange={(e) => setProfileData({...profileData, description: e.target.value})}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setUpdatingProfile(false)}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Profile'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

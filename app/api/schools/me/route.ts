@@ -33,3 +33,48 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await AuthService.getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    const { schoolName, email, phone, location, description } = await request.json();
+
+    // Get the school first
+    const school = await SchoolService.getSchoolByUserId(user.id);
+    if (!school) {
+      return NextResponse.json(
+        { error: 'School not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update school information
+    const updatedSchool = await SchoolService.updateSchool(user.id, school.school_id, {
+      name: schoolName,
+      address: school.address, // Keep existing address
+      contact_person: school.contact_person, // Keep existing contact person
+      type: school.type, // Keep existing type
+      phone,
+      email,
+    });
+
+    return NextResponse.json(
+      { ...updatedSchool, message: 'School profile updated successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('School update error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update school' },
+      { status: 500 }
+    );
+  }
+}
