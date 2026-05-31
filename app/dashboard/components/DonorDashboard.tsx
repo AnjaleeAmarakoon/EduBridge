@@ -130,6 +130,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           <ActionButton
             title="Browse Requests"
             description="Discover schools in need"
+            href="/requests"
             variant="primary"
             gradient="bg-gradient-to-br from-green-500 to-emerald-600 text-white"
             icon={

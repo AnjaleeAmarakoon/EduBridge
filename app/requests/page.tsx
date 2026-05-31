@@ -1,5 +1,6 @@
 import { RequestService } from '@/services/request.service';
 import RequestCard from '@/app/components/requests/RequestCard';
+import BackButton from '@/app/components/BackButton';
 import Link from 'next/link';
 import type { Request } from '@/lib/types/database';
 
@@ -48,6 +49,11 @@ export default async function RequestsPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      {/* Back Button */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <BackButton />
+      </div>
+
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,7 +71,7 @@ export default async function RequestsPage({
                   name="search"
                   defaultValue={params.search}
                   placeholder="Search requests..."
-                  className="w-full px-6 py-4 rounded-full text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-purple-300 pr-12"
+                  className="w-full px-6 py-4 rounded-full text-gray-900 placeholder-gray-500 border-2 border-white focus:outline-none focus:ring-4 focus:ring-purple-300 pr-12"
                 />
                 <button
                   type="submit"

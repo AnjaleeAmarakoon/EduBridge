@@ -78,7 +78,7 @@ export default function RegisterSchoolPage() {
                 id="name"
                 name="name"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                 placeholder="e.g., Springfield Elementary School"
               />
             </div>
@@ -111,7 +111,7 @@ export default function RegisterSchoolPage() {
                 id="address"
                 name="address"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                 placeholder="123 Main Street"
               />
             </div>
@@ -126,7 +126,7 @@ export default function RegisterSchoolPage() {
                 id="contact_person"
                 name="contact_person"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                 placeholder="Dr. Jane Smith"
               />
             </div>
@@ -141,7 +141,7 @@ export default function RegisterSchoolPage() {
                   type="tel"
                   id="phone"
                   name="phone"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                   placeholder="(555) 123-4567"
                 />
               </div>
@@ -153,7 +153,7 @@ export default function RegisterSchoolPage() {
                   type="email"
                   id="email"
                   name="email"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                   placeholder="info@school.edu"
                 />
               </div>

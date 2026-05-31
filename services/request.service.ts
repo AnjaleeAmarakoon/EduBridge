@@ -242,37 +242,133 @@ export class RequestService {
   static async deleteRequest(userId: string, requestId: string) {
     const supabase = await createClient();
 
-    // Verify ownership
-    const { data: request } = await supabase
+    console.log('[RequestService.deleteRequest] Starting delete for requestId:', requestId, 'userId:', userId);
+
+    // Validate inputs
+    if (!requestId || requestId === 'undefined') {
+      throw new Error('Invalid request ID provided');
+    }
+
+    if (!userId || userId === 'undefined') {
+      throw new Error('Invalid user ID');
+    }
+
+    // First, verify the request exists and belongs to this user's school
+    const { data: request, error: fetchError } = await supabase
       .from('requests')
-      .select('school_id')
+      .select('request_id, school_id')
       .eq('request_id', requestId)
       .single();
 
-    if (!request) {
+    if (fetchError || !request) {
+      console.error('[RequestService.deleteRequest] Request not found:', { requestId, fetchError });
       throw new Error('Request not found');
     }
 
-    const { data: school } = await supabase
+    // Verify the user owns the school that owns this request
+    const { data: school, error: schoolError } = await supabase
       .from('schools')
       .select('school_id')
       .eq('school_id', request.school_id)
       .eq('user_id', userId)
       .single();
 
-    if (!school) {
-      throw new Error('Unauthorized');
+    if (schoolError || !school) {
+      console.error('[RequestService.deleteRequest] User not authorized:', { userId, schoolId: request.school_id, schoolError });
+      throw new Error('You are not authorized to delete this request');
     }
 
-    const { error } = await supabase
+    // Now delete the request - RLS policy will also enforce this
+    const { error: deleteError, count } = await supabase
       .from('requests')
       .delete()
       .eq('request_id', requestId);
 
-    if (error) {
-      throw new Error(error.message);
+    console.log('[RequestService.deleteRequest] Delete result - count:', count, 'error:', deleteError);
+
+    if (deleteError) {
+      console.error('[RequestService.deleteRequest] Error object:', {
+        message: deleteError.message,
+        code: deleteError.code,
+        details: deleteError.details,
+        hint: deleteError.hint
+      });
+      throw new Error(deleteError.message || 'Failed to delete request');
     }
 
     return { success: true };
   }
+
+  /**
+   * Update a request (only allowed for "Open" status requests)
+   */
+  static async updateRequest(userId: string, requestId: string, data: CreateRequestInput) {
+    const supabase = await createClient();
+
+    console.log('[RequestService.updateRequest] Starting update for requestId:', requestId, 'userId:', userId);
+
+    // Verify inputs
+    if (!requestId || !userId) {
+      throw new Error('Invalid request or user ID');
+    }
+
+    // Get the request to verify it exists and belongs to this user's school
+    const { data: request, error: fetchError } = await supabase
+      .from('requests')
+      .select('request_id, school_id, status')
+      .eq('request_id', requestId)
+      .single();
+
+    if (fetchError || !request) {
+      console.error('[RequestService.updateRequest] Request not found:', { requestId, fetchError });
+      throw new Error('Request not found');
+    }
+
+    // Only allow editing if status is "Open"
+    if (request.status !== 'Open') {
+      throw new Error(`Cannot edit request with status "${request.status}". Only "Open" requests can be edited.`);
+    }
+
+    // Verify the user owns the school that owns this request
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .select('school_id')
+      .eq('school_id', request.school_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (schoolError || !school) {
+      console.error('[RequestService.updateRequest] User not authorized:', { userId, schoolId: request.school_id });
+      throw new Error('You are not authorized to edit this request');
+    }
+
+    // Update the request
+    const { error: updateError } = await supabase
+      .from('requests')
+      .update({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        type: data.type,
+        urgency: data.urgency,
+        target_amount: data.target_amount || null,
+        required_items: data.required_items || null,
+        required_volunteers: data.required_volunteers || null,
+        students_impacted: data.students_impacted || null,
+        deadline_date: data.deadline_date || null,
+        location: data.location || null,
+        image_url: data.image_url || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('request_id', requestId);
+
+    if (updateError) {
+      console.error('[RequestService.updateRequest] Update error:', updateError);
+      throw new Error(updateError.message || 'Failed to update request');
+    }
+
+    console.log('[RequestService.updateRequest] Update successful for requestId:', requestId);
+    return { success: true };
+  }
 }
+

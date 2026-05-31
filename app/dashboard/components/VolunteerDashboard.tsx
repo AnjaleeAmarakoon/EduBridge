@@ -149,6 +149,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           <ActionButton
             title="Browse Requests"
             description="Find teaching opportunities"
+            href="/requests"
             gradient="bg-gradient-to-br from-blue-50 to-indigo-50"
             icon={
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

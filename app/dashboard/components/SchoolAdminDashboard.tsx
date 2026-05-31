@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
@@ -12,7 +12,15 @@ interface SchoolAdminDashboardProps {
   requests: Request[];
 }
 
-export default function SchoolAdminDashboard({ schoolName, firstName, requests }: SchoolAdminDashboardProps) {
+export default function SchoolAdminDashboard({ schoolName, firstName, requests: initialRequests }: SchoolAdminDashboardProps) {
+  const [requests, setRequests] = useState(initialRequests);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<Request | null>(null);
+  const [saving, setSaving] = useState(false);
+
   // Calculate stats from real data
   const stats = useMemo(() => {
     const totalRequests = requests.length;
@@ -33,6 +41,111 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
       totalResponses,
     };
   }, [requests]);
+
+  // Filter and search requests
+  const filteredRequests = useMemo(() => {
+    return requests.filter(request => {
+      const matchesSearch = request.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           request.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'All Status' || request.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [requests, searchQuery, statusFilter]);
+
+  const handleDeleteClick = (requestId: string, title: string) => {
+    console.log('[handleDeleteClick] requestId:', requestId, 'title:', title);
+    if (!requestId) {
+      console.error('[handleDeleteClick] requestId is undefined!');
+      alert('Error: Request ID is missing. Please refresh the page and try again.');
+      return;
+    }
+    setDeleteConfirm({ id: requestId, title });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+    
+    console.log('[handleDeleteConfirm] deleteConfirm:', deleteConfirm);
+    console.log('[handleDeleteConfirm] Calling DELETE /api/requests/', deleteConfirm.id);
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/requests/${deleteConfirm.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Delete failed:', data);
+        alert(`Failed to delete request: ${data.error || 'Unknown error'}`);
+        setDeleting(false);
+        return;
+      }
+
+      // Remove from local state
+      setRequests(requests.filter(r => r.request_id !== deleteConfirm.id));
+      setDeleteConfirm(null);
+      setDeleting(false);
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(`Error deleting request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setDeleting(false);
+    }
+  };
+
+  const handleEditClick = (request: Request) => {
+    setEditingRequest(request);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRequest) return;
+
+    console.log('[handleSaveEdit] Saving request:', editingRequest.request_id);
+    setSaving(true);
+
+    try {
+      const response = await fetch(`/api/requests/${editingRequest.request_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editingRequest.title,
+          description: editingRequest.description,
+          category: editingRequest.category,
+          type: editingRequest.type,
+          urgency: editingRequest.urgency,
+          target_amount: editingRequest.target_amount || undefined,
+          required_items: editingRequest.required_items || undefined,
+          required_volunteers: editingRequest.required_volunteers || undefined,
+          students_impacted: editingRequest.students_impacted || undefined,
+          deadline_date: editingRequest.deadline_date || undefined,
+          location: editingRequest.location || undefined,
+          image_url: editingRequest.image_url || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Save failed:', data);
+        alert(`Failed to save request: ${data.error || 'Unknown error'}`);
+        setSaving(false);
+        return;
+      }
+
+      // Update local state with the edited request
+      setRequests(requests.map(r => r.request_id === editingRequest.request_id ? editingRequest : r));
+      setEditingRequest(null);
+      setSaving(false);
+      alert('Request updated successfully!');
+    } catch (error) {
+      console.error('Save error:', error);
+      alert(`Error saving request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -169,13 +282,21 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
             <input
               type="text"
               placeholder="Search requests..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
               <option>All Status</option>
-              <option>Pending</option>
-              <option>Accepted</option>
-              <option>Completed</option>
+              <option>Open</option>
+              <option>In Progress</option>
+              <option>Fulfilled</option>
+              <option>Closed</option>
+              <option>Cancelled</option>
             </select>
           </div>
         </div>
@@ -194,8 +315,17 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
               </tr>
             </thead>
             <tbody>
-              {requests.length > 0 ? (
-                requests.slice(0, 10).map((request) => {
+              {filteredRequests.length > 0 ? (
+                filteredRequests
+                  .filter(r => r.request_id)  // Filter out any requests without a valid request_id
+                  .slice(0, 10)
+                  .map((request) => {
+                  console.log('[SchoolAdminDashboard] Request object:', {
+                    request_id: request.request_id,
+                    title: request.title,
+                    allKeys: Object.keys(request)
+                  });
+                  
                   const formattedDate = new Date(request.created_at).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
@@ -252,7 +382,21 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           </Link>
-                          <button className="p-2 hover:bg-red-50 rounded-lg transition" title="Delete">
+                          <button 
+                            onClick={() => handleEditClick(request)}
+                            disabled={request.status !== 'Open'}
+                            className={`p-2 rounded-lg transition ${request.status === 'Open' ? 'hover:bg-amber-50 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                            title={request.status === 'Open' ? 'Edit' : 'Only open requests can be edited'}
+                          >
+                            <svg className={`w-4 h-4 ${request.status === 'Open' ? 'text-amber-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(request.request_id, request.title)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition" 
+                            title="Delete"
+                          >
                             <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -269,7 +413,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
                       <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <p className="text-gray-500 text-lg font-medium mb-2">No requests yet</p>
+                      <p className="text-gray-500 text-lg font-medium mb-2">No requests found</p>
                       <p className="text-gray-400 mb-4">Create your first request to get started</p>
                       <Link
                         href="/requests/create"
@@ -514,6 +658,183 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests }
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0-12a9 9 0 110 18 9 9 0 010-18z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete Request?</h3>
+            <p className="text-gray-600 text-center mb-6">
+              Are you sure you want to delete "<strong>{deleteConfirm.title}</strong>"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingRequest && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-6">Edit Request</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editingRequest.title}
+                  onChange={(e) => setEditingRequest({...editingRequest, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={editingRequest.description}
+                  onChange={(e) => setEditingRequest({...editingRequest, description: e.target.value})}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={editingRequest.category}
+                    onChange={(e) => setEditingRequest({...editingRequest, category: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option>Education Materials</option>
+                    <option>Infrastructure</option>
+                    <option>Technology</option>
+                    <option>Volunteer Teaching</option>
+                    <option>Special Equipment</option>
+                    <option>Food & Nutrition</option>
+                    <option>Healthcare</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={editingRequest.type}
+                    onChange={(e) => setEditingRequest({...editingRequest, type: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="money">Money</option>
+                    <option value="goods">Goods</option>
+                    <option value="volunteer">Volunteer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
+                  <select
+                    value={editingRequest.urgency}
+                    onChange={(e) => setEditingRequest({...editingRequest, urgency: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                    <option>Critical</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={editingRequest.location || ''}
+                    onChange={(e) => setEditingRequest({...editingRequest, location: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deadline Date</label>
+                  <input
+                    type="date"
+                    value={editingRequest.deadline_date || ''}
+                    onChange={(e) => setEditingRequest({...editingRequest, deadline_date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Students Impacted</label>
+                  <input
+                    type="number"
+                    value={editingRequest.students_impacted || ''}
+                    onChange={(e) => setEditingRequest({...editingRequest, students_impacted: parseInt(e.target.value) || undefined})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingRequest(null)}
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
