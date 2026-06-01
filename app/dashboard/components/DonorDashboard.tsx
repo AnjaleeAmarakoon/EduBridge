@@ -1,14 +1,43 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
+import { fetchUrgentRequests } from '../actions';
 
 interface DonorDashboardProps {
   firstName: string;
 }
 
+interface UrgentRequest {
+  request_id: string;
+  title: string;
+  school_name: string;
+  urgency: string;
+  location: string;
+  students_impacted: number;
+  target_amount: number;
+  raised_amount: number;
+  type: string;
+  schools?: {
+    name: string;
+  };
+}
+
 export default function DonorDashboard({ firstName }: DonorDashboardProps) {
+  const [urgentRequests, setUrgentRequests] = useState<UrgentRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUrgentRequests().then((result) => {
+      if (result.success) {
+        setUrgentRequests(result.data);
+      } else {
+        setUrgentRequests([]);
+      }
+      setLoading(false);
+    });
+  }, []);
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -196,59 +225,65 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { school: 'Sunrise School for the Blind', request: 'Braille Learning Materials', amount: '$800', category: 'Education Materials', urgency: 'High', location: 'New York', students: 45 },
-            { school: 'Rural Elementary School', request: 'Clean Water System', amount: '$2,500', category: 'Infrastructure', urgency: 'Critical', location: 'Texas', students: 120 },
-            { school: 'Hope School for Deaf', request: 'Sign Language Resources', amount: '$600', category: 'Education Materials', urgency: 'High', location: 'California', students: 60 },
-          ].map((request, index) => (
-            <div key={index} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
-              <div className="flex items-start justify-between mb-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  request.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                }`}>
-                  {request.urgency}
-                </span>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
-              </div>
-              
-              <h4 className="font-bold text-gray-900 mb-2 text-lg">{request.request}</h4>
-              <p className="text-sm text-gray-600 mb-3 flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                {request.school}
-              </p>
-              
-              <div className="flex items-center gap-3 mb-4 text-xs text-gray-600">
-                <span className="flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  {request.location}
-                </span>
-                <span className="flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  {request.students} students
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div>
-                  <p className="text-xs text-gray-600">Goal</p>
-                  <p className="text-xl font-bold text-green-600">{request.amount}</p>
-                </div>
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
-                  Donate Now
-                </button>
-              </div>
+          {loading ? (
+            <div className="col-span-full flex justify-center py-8">
+              <div className="text-gray-600">Loading urgent requests...</div>
             </div>
-          ))}
+          ) : urgentRequests.length === 0 ? (
+            <div className="col-span-full flex justify-center py-8">
+              <div className="text-gray-600">No urgent requests at the moment.</div>
+            </div>
+          ) : (
+            urgentRequests.slice(0, 3).map((request) => (
+              <div key={request.request_id} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    request.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {request.urgency}
+                  </span>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">{request.title}</h4>
+                <p className="text-sm text-gray-600 mb-3 flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  {request.schools?.name || 'School'}
+                </p>
+                
+                <div className="flex items-center gap-3 mb-4 text-xs text-gray-600">
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    {request.location || 'Location'}
+                  </span>
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    {request.students_impacted} students
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div>
+                    <p className="text-xs text-gray-600">Goal</p>
+                    <p className="text-xl font-bold text-green-600">${request.target_amount?.toLocaleString() || '0'}</p>
+                  </div>
+                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
+                    Donate Now
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
