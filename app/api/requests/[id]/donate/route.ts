@@ -5,9 +5,9 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 const CARD_NUMBER_REGEX = /^[0-9]{12,19}$/;
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    console.log('[POST /api/requests/[id]/donate] user:', user.id, 'params.id:', params.id);
+    const { id } = await params;
+    console.log('[POST /api/requests/[id]/donate] user:', user.id, 'params.id:', id);
 
     const body = await request.json();
 
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       const transactionId = generateTransactionId();
 
-      const result = await DonationService.createDonationForRequest(user.id, params.id, {
+      const result = await DonationService.createDonationForRequest(user.id, id, {
         donation_type: 'money',
         amount,
         payment_method: 'credit_card',
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       console.log('[POST /api/requests/[id]/donate] donation created:', result?.donation?.donation_id);
 
-      revalidatePath(`/requests/${params.id}`);
+      revalidatePath(`/requests/${id}`);
 
       return NextResponse.json(
         {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const transactionId = generateTransactionId();
 
-    const result = await DonationService.createDonationForRequest(user.id, params.id, {
+    const result = await DonationService.createDonationForRequest(user.id, id, {
       donation_type: 'goods',
       items_donated: itemsDonated,
       payment_status: 'Pending',
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       message_to_school: messageToSchool,
     });
 
-    revalidatePath(`/requests/${params.id}`);
+    revalidatePath(`/requests/${id}`);
 
     return NextResponse.json(
       {

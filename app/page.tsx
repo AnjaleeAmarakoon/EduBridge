@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatCurrency } from "@/lib/currency";
+// removed unused import
 
 export default function Home() {
   return (

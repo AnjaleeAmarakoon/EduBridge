@@ -1,18 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
-import { createSessionProposal } from '../actions';
+import React, { useEffect, useState } from 'react';
+import { createSessionProposal, fetchVerifiedSchools } from '../actions';
 
 interface CreateSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  volunteerId?: string;
 }
 
-export default function CreateSessionModal({ isOpen, onClose, volunteerId }: CreateSessionModalProps) {
+type FormData = {
+  schoolId: string;
+  title: string;
+  description: string;
+  topic: string;
+  subject: string;
+  educationalLevel: string;
+  targetAudience: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  sessionType: 'In-Person' | 'Virtual' | 'Hybrid';
+  maxStudents: string;
+  materialsNeeded: string;
+  prerequisites: string;
+};
+
+export default function CreateSessionModal({ isOpen, onClose }: CreateSessionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
+    schoolId: '',
     title: '',
     description: '',
     topic: '',
@@ -29,6 +47,8 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
     prerequisites: '',
   });
 
+  const [schools, setSchools] = useState<{ school_id: string; name: string }[]>([]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -44,6 +64,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
 
     try {
       const result = await createSessionProposal({
+        schoolId: formData.schoolId,
         title: formData.title,
         description: formData.description,
         topic: formData.topic,
@@ -62,6 +83,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
 
       if (result.success) {
         setFormData({
+          schoolId: '',
           title: '',
           description: '',
           topic: '',
@@ -88,13 +110,23 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
     }
   };
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchVerifiedSchools();
+        if (res.success && mounted) setSchools(res.data || []);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      {/* Blurred background */}
-      <div className="absolute inset-0 bg-black bg-opacity-20 -z-10"></div>
-      
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 flex items-center justify-between">
@@ -120,6 +152,21 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
           {/* Title & Topic Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Target School *</label>
+              <select
+                name="schoolId"
+                value={formData.schoolId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+              >
+                <option value="">Select School</option>
+                {schools.map(s => (
+                  <option key={s.school_id} value={s.school_id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Session Title *
               </label>
@@ -130,7 +177,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 required
                 placeholder="e.g., Introduction to Python Programming"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -145,7 +192,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 required
                 placeholder="e.g., Computer Science"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
           </div>
@@ -163,7 +210,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 required
                 placeholder="e.g., Programming"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -176,7 +223,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.educationalLevel}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               >
                 <option value="">Select Level</option>
                 <option value="Primary">Primary (Grade 1-6)</option>
@@ -201,7 +248,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 required
                 placeholder="e.g., Students interested in coding"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -214,7 +261,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.sessionType}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               >
                 <option value="In-Person">In-Person</option>
                 <option value="Virtual">Virtual</option>
@@ -235,7 +282,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
               required
               rows={4}
               placeholder="Describe your session, what will be covered, learning outcomes, etc."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-gray-900"
             />
           </div>
 
@@ -251,7 +298,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.sessionDate}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -265,7 +312,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.startTime}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -279,7 +326,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.endTime}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
           </div>
@@ -297,7 +344,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 required
                 placeholder="e.g., Room 101, School Name or Virtual"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -312,7 +359,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 onChange={handleChange}
                 min="1"
                 placeholder="30"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
           </div>
@@ -329,7 +376,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.materialsNeeded}
                 onChange={handleChange}
                 placeholder="e.g., Projector, Whiteboard, Computers"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
 
@@ -343,7 +390,7 @@ export default function CreateSessionModal({ isOpen, onClose, volunteerId }: Cre
                 value={formData.prerequisites}
                 onChange={handleChange}
                 placeholder="e.g., Basic knowledge of programming"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
               />
             </div>
           </div>

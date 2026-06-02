@@ -1,8 +1,9 @@
 import { RequestService } from '@/services/request.service';
-import Link from 'next/link';
+// Link removed (unused)
 import RespondButton from './RespondButton';
 import DonationModal from './DonationModal';
 import BackButton from '@/app/components/BackButton';
+import AcceptOfferButton from '../AcceptOfferButton';
 import { notFound, redirect } from 'next/navigation';
 import type { RequestType } from '@/lib/types/database';
 import { createClient } from '@/lib/supabase/server';
@@ -52,12 +53,40 @@ export default async function RequestDetailPage({
   const { id } = await params;
   let request: RequestDetail | null = null;
   let responseCount = 0;
+  interface ResponseEntry {
+    response_id: string;
+    profiles?: { first_name?: string; last_name?: string; email?: string } | null;
+    message?: string | null;
+    created_at?: string | null;
+  }
+
+  let responses: ResponseEntry[] = [];
   let error: string | null = null;
 
   try {
     const result = await RequestService.getRequestById(id);
     request = result.request as RequestDetail;
     responseCount = result.responseCount;
+    // fetch responses and check ownership
+      try {
+      const { data: schoolOwner } = await supabase
+        .from('schools')
+        .select('user_id')
+        .eq('school_id', request.school_id)
+        .single();
+
+      if (schoolOwner && schoolOwner.user_id === user?.id) {
+        const { data: respData } = await supabase
+          .from('request_responses')
+          .select('*, profiles:profiles!user_id(first_name,last_name,email)')
+          .eq('request_id', id)
+          .order('created_at', { ascending: true });
+
+        responses = respData || [];
+      }
+    } catch (e) {
+      console.error('Error fetching responses', e);
+    }
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load request';
   }
@@ -227,6 +256,28 @@ export default async function RequestDetailPage({
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
+            {/* Volunteer Responses (only visible to school's owner) */}
+            {responses && responses.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Volunteer Responses</h3>
+                <div className="space-y-3">
+                  {responses.map((r: ResponseEntry) => (
+                    <div key={r.response_id} className="p-3 rounded-lg border border-gray-100">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-900">{r.profiles?.first_name} {r.profiles?.last_name}</p>
+                          <p className="text-xs text-gray-600">{r.message}</p>
+                          <p className="text-xs text-gray-500 mt-2">{r.created_at ? new Date(r.created_at).toLocaleString() : 'Unknown date'}</p>
+                        </div>
+                        <div className="ml-3 flex items-start">
+                          <AcceptOfferButton responseId={r.response_id} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* School Info */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">School Information</h3>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SchoolService } from '@/services/school.service';
 import { AuthService } from '@/services/auth.service';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await AuthService.getCurrentUser();
 
@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { schoolName, email, phone, location, description } = await request.json();
+    const { schoolName, email, phone } = await request.json();
 
     // Get the school first
     const school = await SchoolService.getSchoolByUserId(user.id);
