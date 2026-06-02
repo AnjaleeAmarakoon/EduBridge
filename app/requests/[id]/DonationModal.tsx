@@ -7,13 +7,15 @@ import { formatCurrency } from '@/lib/currency';
 interface DonationModalProps {
   requestId: string;
   requestType: 'money' | 'goods';
+  triggerText?: string;
+  triggerClassName?: string;
 }
 
 type DonationStep = 'amount' | 'payment' | 'success';
 
 type DonationType = 'money' | 'goods';
 
-export default function DonationModal({ requestId, requestType }: DonationModalProps) {
+export default function DonationModal({ requestId, requestType, triggerText, triggerClassName }: DonationModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<DonationStep>('amount');
   const [donationType, setDonationType] = useState<DonationType>(requestType);
@@ -163,9 +165,9 @@ export default function DonationModal({ requestId, requestType }: DonationModalP
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full px-6 py-3 bg-white text-purple-600 rounded-lg font-bold hover:bg-purple-50 transition"
+        className={triggerClassName || "w-full px-6 py-3 bg-white text-purple-600 rounded-lg font-bold hover:bg-purple-50 transition"}
       >
-        Donate Now
+        {triggerText || 'Donate Now'}
       </button>
 
       {isOpen && (

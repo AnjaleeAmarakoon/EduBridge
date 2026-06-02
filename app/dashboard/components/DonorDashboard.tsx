@@ -5,6 +5,7 @@ import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import { fetchUrgentRequests } from '../actions';
 import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
+import DonationModal from '@/app/requests/[id]/DonationModal';
 
 interface DonorDashboardProps {
   firstName: string;
@@ -19,7 +20,7 @@ interface UrgentRequest {
   students_impacted: number;
   target_amount: number;
   raised_amount: number;
-  type: string;
+  type: 'money' | 'goods';
   schools?: {
     name: string;
   };
@@ -280,9 +281,12 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
                     <p className="text-xs text-gray-600">Goal</p>
                     <p className="text-xl font-bold text-green-600">{formatCurrency(request.target_amount)}</p>
                   </div>
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
-                    Donate Now
-                  </button>
+                  <DonationModal
+                    requestId={request.request_id}
+                    requestType={request.type || 'money'}
+                    triggerText="Donate Now"
+                    triggerClassName="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm"
+                  />
                 </div>
               </div>
             ))

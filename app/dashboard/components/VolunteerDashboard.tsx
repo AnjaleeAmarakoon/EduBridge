@@ -5,6 +5,7 @@ import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import CreateSessionModal from './CreateSessionModal';
 import { fetchVolunteerSessions } from '@/app/dashboard/actions';
+import RespondButton from '@/app/requests/[id]/RespondButton';
 
 interface VolunteerDashboardProps {
   firstName: string;
@@ -31,7 +32,7 @@ interface Opportunity {
   title: string;
   description?: string;
   category?: string;
-  type?: string;
+  type?: 'volunteer' | 'money' | 'goods';
   urgency?: string;
   status?: string;
   required_volunteers?: number | null;
@@ -525,9 +526,12 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
                   </div>
                 </div>
                 
-                <button className="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm">
-                  Offer to Help
-                </button>
+                <RespondButton
+                  requestId={opportunity.request_id}
+                  requestType={opportunity.type || 'volunteer'}
+                  triggerText="Offer to Help"
+                  triggerClassName="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm"
+                />
               </div>
             ))
           )}
