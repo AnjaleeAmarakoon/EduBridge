@@ -333,7 +333,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
         <div className="relative z-10">
           <h2 className="text-4xl font-bold mb-3">Welcome back, {firstName}! </h2>
-          <p className="text-blue-100 text-lg mb-4">{schoolName}</p>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold backdrop-blur-sm border border-white/30 shadow-sm">School Dashboard</span>
+            <p className="text-blue-100 text-lg">{schoolName}</p>
+          </div>
           <p className="text-blue-50 max-w-2xl">
             Manage your school profile, post resource requests, connect with donors and volunteers, and track your community support.
           </p>

@@ -173,9 +173,12 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           <h2 className="text-4xl font-bold mb-3">
             Welcome back, {firstName}! 
           </h2>
-          {isOrganization && organizationName && (
-            <p className="text-purple-100 text-lg mb-4">{organizationName}</p>
-          )}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold backdrop-blur-sm border border-white/30 shadow-sm">Volunteer Dashboard</span>
+            {isOrganization && organizationName && (
+              <p className="text-purple-100 text-lg">{organizationName}</p>
+            )}
+          </div>
           <p className="text-purple-50 max-w-2xl">
             {isOrganization 
               ? 'Manage your team, organize teaching sessions, and track your collective impact on students.'

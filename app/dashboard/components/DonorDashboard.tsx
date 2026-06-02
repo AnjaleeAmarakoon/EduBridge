@@ -47,7 +47,9 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
         <div className="relative z-10">
           <h2 className="text-4xl font-bold mb-3">Welcome back, {firstName}! </h2>
-          <p className="text-green-100 text-lg mb-4">Your Impact Dashboard</p>
+          <div className="mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold backdrop-blur-sm border border-white/30 shadow-sm">Donator Dashboard</span>
+          </div>
           <p className="text-green-50 max-w-2xl">
             Track your donations, browse requests from schools, and see the difference you&apos;re making in students&apos; lives.
           </p>
