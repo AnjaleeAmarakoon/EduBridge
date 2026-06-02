@@ -191,3 +191,52 @@ export async function fetchVolunteerSessions(status?: string) {
     };
   }
 }
+
+export async function fetchSchoolDonations() {
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, data: [], error: 'User not authenticated' };
+    }
+
+    // Get school_id
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .select('school_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (schoolError || !school) {
+      return { success: false, data: [], error: 'School not found' };
+    }
+
+    const { data: donations, error } = await supabase
+      .from('donations')
+      .select(`
+        *,
+        profiles:donor_id (first_name, last_name, email),
+        requests:request_id (title)
+      `)
+      .eq('school_id', school.school_id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching donations:', error);
+      return { success: false, data: [], error: error.message };
+    }
+
+    return { success: true, data: donations || [] };
+  } catch (error) {
+    console.error('Error in fetchSchoolDonations:', error);
+    return {
+      success: false,
+      data: [],
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
