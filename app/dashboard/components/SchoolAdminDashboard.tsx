@@ -5,6 +5,7 @@ import Link from 'next/link';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import type { Request } from '@/lib/types/database';
+import { formatCurrency } from '@/lib/currency';
 
 interface SchoolAdminDashboardProps {
   schoolName: string;
@@ -495,9 +496,9 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
           </h3>
           <div className="space-y-3">
             {[
-              { donor: 'John Smith', type: 'Money', amount: '$500', request: 'Science Lab Equipment', status: 'Completed', date: '2026-01-16' },
+              { donor: 'John Smith', type: 'Money', amount: formatCurrency(500), request: 'Science Lab Equipment', status: 'Completed', date: '2026-01-16' },
               { donor: 'Anonymous', type: 'Goods', amount: '20 Books', request: 'Library Books', status: 'In Transit', date: '2026-01-15' },
-              { donor: 'Tech Corp', type: 'Money', amount: '$1,200', request: 'Computer Lab', status: 'Pending', date: '2026-01-14' },
+              { donor: 'Tech Corp', type: 'Money', amount: formatCurrency(1200), request: 'Computer Lab', status: 'Pending', date: '2026-01-14' },
             ].map((donation, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                 <div className="flex items-center gap-3 flex-1">

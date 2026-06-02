@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import { fetchUrgentRequests } from '../actions';
+import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
 
 interface DonorDashboardProps {
   firstName: string;
@@ -64,9 +65,9 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Donated"
-            value="$12,450"
+            value={formatCurrency(12450)}
             color="green"
-            trend={{ value: '+$2,500 this month', isPositive: true }}
+            trend={{ value: formatCurrencyTrend(2500) + ' this month', isPositive: true }}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -136,7 +137,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           />
           <StatCard
             title="Tax-Deductible"
-            value="$11,200"
+            value={formatCurrency(11200)}
             color="pink"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +276,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div>
                     <p className="text-xs text-gray-600">Goal</p>
-                    <p className="text-xl font-bold text-green-600">${request.target_amount?.toLocaleString() || '0'}</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(request.target_amount)}</p>
                   </div>
                   <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
                     Donate Now
@@ -316,10 +317,10 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
             </thead>
             <tbody>
               {[
-                { school: 'Sunrise School', request: 'Braille Materials', type: 'Money', amount: '$800', status: 'Delivered', date: '2026-01-15' },
+                { school: 'Sunrise School', request: 'Braille Materials', type: 'Money', amount: formatCurrency(800), status: 'Delivered', date: '2026-01-15' },
                 { school: 'Hope School', request: 'Sign Language Books', type: 'Goods', amount: '25 Books', status: 'In Transit', date: '2026-01-14' },
-                { school: 'Rural Elementary', request: 'Water System', type: 'Money', amount: '$2,500', status: 'Confirmed', date: '2026-01-12' },
-                { school: 'City Middle School', request: 'Computer Lab', type: 'Money', amount: '$1,200', status: 'Pending', date: '2026-01-10' },
+                { school: 'Rural Elementary', request: 'Water System', type: 'Money', amount: formatCurrency(2500), status: 'Confirmed', date: '2026-01-12' },
+                { school: 'City Middle School', request: 'Computer Lab', type: 'Money', amount: formatCurrency(1200), status: 'Pending', date: '2026-01-10' },
               ].map((donation, index) => (
                 <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-4">
@@ -386,10 +387,10 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
               </div>
               <div className="space-y-3">
                 {[
-                  { category: 'Education Materials', amount: '$5,200', percentage: 42 },
-                  { category: 'Infrastructure', amount: '$4,100', percentage: 33 },
-                  { category: 'Technology', amount: '$2,150', percentage: 17 },
-                  { category: 'Other', amount: '$1,000', percentage: 8 },
+                  { category: 'Education Materials', amount: formatCurrency(5200), percentage: 42 },
+                  { category: 'Infrastructure', amount: formatCurrency(4100), percentage: 33 },
+                  { category: 'Technology', amount: formatCurrency(2150), percentage: 17 },
+                  { category: 'Other', amount: formatCurrency(1000), percentage: 8 },
                 ].map((item, index) => (
                   <div key={index}>
                     <div className="flex items-center justify-between mb-1">

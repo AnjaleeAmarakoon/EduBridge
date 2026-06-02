@@ -1,10 +1,12 @@
 import { RequestService } from '@/services/request.service';
 import Link from 'next/link';
 import RespondButton from './RespondButton';
+import DonationModal from './DonationModal';
 import BackButton from '@/app/components/BackButton';
 import { notFound, redirect } from 'next/navigation';
 import type { RequestType } from '@/lib/types/database';
 import { createClient } from '@/lib/supabase/server';
+import { formatCurrency } from '@/lib/currency';
 
 interface School {
   name: string;
@@ -15,6 +17,7 @@ interface School {
 
 interface RequestDetail {
   request_id: string;
+  school_id: string;
   title: string;
   description: string;
   category: string;
@@ -180,10 +183,10 @@ export default async function RequestDetailPage({
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Funding Progress</h2>
                   <div className="flex justify-between text-sm mb-3">
                     <span className="text-gray-600">
-                      Raised: <span className="font-bold text-green-600 text-lg">${(request.raised_amount || 0).toLocaleString()}</span>
+                      Raised: <span className="font-bold text-green-600 text-lg">{formatCurrency(request.raised_amount || 0)}</span>
                     </span>
                     <span className="text-gray-600">
-                      Goal: <span className="font-bold text-lg">${(request.target_amount || 0).toLocaleString()}</span>
+                      Goal: <span className="font-bold text-lg">{formatCurrency(request.target_amount || 0)}</span>
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-4">
@@ -196,7 +199,7 @@ export default async function RequestDetailPage({
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">${((request.target_amount || 0) - (request.raised_amount || 0)).toLocaleString()} remaining</p>
+                  <p className="text-sm text-gray-600 mt-2">{formatCurrency((request.target_amount || 0) - (request.raised_amount || 0))} remaining</p>
                 </div>
               )}
 
@@ -254,9 +257,15 @@ export default async function RequestDetailPage({
               <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg p-6 text-white">
                 <h3 className="text-xl font-bold mb-3">Ready to Help?</h3>
                 <p className="mb-6 text-purple-100">
-                  Express your interest and make a difference in the lives of these students.
+                  {request.type === 'volunteer'
+                    ? 'Express your interest and make a difference in the lives of these students.'
+                    : 'Choose a donation type and support this request today.'}
                 </p>
-                <RespondButton requestId={request.request_id} requestType={request.type} />
+                {request.type === 'volunteer' ? (
+                  <RespondButton requestId={request.request_id} requestType={request.type} />
+                ) : (
+                  <DonationModal requestId={request.request_id} requestType={request.type} />
+                )}
               </div>
             )}
 

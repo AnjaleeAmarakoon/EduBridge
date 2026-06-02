@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Home() {
   return (
@@ -94,7 +95,7 @@ export default function Home() {
               {[
                 { value: "500+", label: "Schools Connected" },
                 { value: "2,000+", label: "Students Helped" },
-                { value: "$250K+", label: "Donations Raised" },
+                { value: "₨250K+", label: "Donations Raised" },
                 { value: "150+", label: "Active Volunteers" }
               ].map((stat, index) => (
                 <div key={index} className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition">
