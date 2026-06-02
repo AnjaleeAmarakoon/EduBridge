@@ -21,9 +21,11 @@ create table public.schools (
   name text not null,
   type text not null check (type in ('Blind', 'Deaf', 'Rural')),
   address text not null,
+  postal_code text,
   contact_person text not null,
   phone text,
   email text,
+  bank_account_details text,
   verified boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null

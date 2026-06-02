@@ -50,6 +50,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
   const [error, setError] = useState<string | null>(null);
   const [oppsLoading, setOppsLoading] = useState(false);
   const [oppsError, setOppsError] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
   // Map status values to tab names for filtering
   const getTabStatusFilter = (tab: string): string[] => {
@@ -74,7 +75,22 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
       try {
         const result = await fetchVolunteerSessions();
         if (result.success) {
-          setSessions(result.data || []);
+          // Normalize session id field
+          const mapped = (result.data || []).map((s) => ({
+            id: s.session_id || s.id,
+            title: s.title,
+            subject: s.subject,
+            session_date: s.session_date,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            location: s.location,
+            max_students: s.max_students,
+            status: s.status,
+            schools: s.schools || s.schools || (s.schools ? s.schools : s.school) ,
+            topic: s.topic,
+          }));
+
+          setSessions(mapped || []);
         } else {
           setError(result.error || 'Failed to load sessions');
         }
@@ -130,6 +146,23 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
   };
 
   const filteredSessions = getFilteredSessions();
+  // calendar helpers
+  const startOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const firstWeekDay = startOfMonth.getDay();
+
+  const daysArray = Array.from({ length: firstWeekDay + daysInMonth }, (_, i) => i - firstWeekDay + 1);
+  const sessionDaysSet = new Set<number>();
+  sessions.forEach(s => {
+    try {
+      const d = new Date(s.session_date);
+      if (d.getMonth() === calendarMonth.getMonth() && d.getFullYear() === calendarMonth.getFullYear()) {
+        sessionDaysSet.add(d.getDate());
+      }
+    } catch {
+      // ignore invalid dates
+    }
+  });
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -507,15 +540,15 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
               <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              January 2026
+              {calendarMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })}
             </h3>
             <div className="flex gap-2">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -530,20 +563,17 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
                 {day}
               </div>
             ))}
-            {Array.from({ length: 35 }, (_, i) => {
-              const day = i - 2;
-              const hasSession = [5, 12, 18, 20, 22, 25].includes(day);
+            {daysArray.map((day, i) => {
+              const isValid = day > 0 && day <= daysInMonth;
+              const hasSession = isValid && sessionDaysSet.has(day);
               return (
                 <div
                   key={i}
                   className={`text-center text-sm py-2 rounded-lg ${
-                    day < 1 || day > 31 ? 'text-gray-300' :
-                    day === 18 ? 'bg-purple-600 text-white font-bold' :
-                    hasSession ? 'bg-purple-100 text-purple-700 font-medium' :
-                    'text-gray-700 hover:bg-gray-100 cursor-pointer'
+                    !isValid ? 'text-gray-300' : hasSession ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
                   }`}
                 >
-                  {day > 0 && day <= 31 ? day : ''}
+                  {isValid ? day : ''}
                 </div>
               );
             })}

@@ -4,9 +4,9 @@ import { AuthService } from '@/services/auth.service';
 import { revalidatePath } from 'next/cache';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function POST(
@@ -24,11 +24,12 @@ export async function POST(
     }
 
     const body = await request.json();
+    const { id } = await params;
 
-    const result = await RequestService.respondToRequest(user.id, params.id, body);
+    const result = await RequestService.respondToRequest(user.id, id, body);
 
     // Revalidate path
-    revalidatePath(`/requests/${params.id}`);
+    revalidatePath(`/requests/${id}`);
 
     return NextResponse.json(
       { 

@@ -1,16 +1,36 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import {
+  fetchSchoolSessions,
+  approveSessionProposalAction,
+  declineSessionProposalAction,
+  logSessionAttendanceAction,
+  completeSessionAction,
+} from '@/app/dashboard/actions';
 import Link from 'next/link';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
-import type { Request } from '@/lib/types/database';
+import type { Request, RequestCategory, RequestType, Urgency } from '@/lib/types/database';
 import { formatCurrency } from '@/lib/currency';
 
 interface SchoolAdminDashboardProps {
   schoolName: string;
   firstName: string;
   requests: Request[];
+}
+
+interface VolunteerSession {
+  session_id: string;
+  status: string;
+  title: string;
+  profiles?: { first_name?: string; last_name?: string } | null;
+  volunteer_id?: string;
+  session_date: string;
+  start_time: string;
+  end_time: string;
+  registered_students?: number | null;
+  max_students?: number | null;
 }
 
 export default function SchoolAdminDashboard({ schoolName, firstName, requests: initialRequests }: SchoolAdminDashboardProps) {
@@ -28,7 +48,110 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
     phone: '',
     location: '',
     description: '',
+    postalCode: '',
+    bankAccountDetails: '',
   });
+
+  // Sessions and attendance state
+  const [sessions, setSessions] = useState<VolunteerSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; session?: VolunteerSession; csv?: string }>({ open: false });
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setSessionsLoading(true);
+      try {
+        const res = await fetchSchoolSessions();
+        if (res.success && mounted) setSessions(res.data || []);
+      } catch (e) {
+        console.error('Failed to load school sessions', e);
+      } finally {
+        if (mounted) setSessionsLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const refreshSessions = async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await fetchSchoolSessions();
+      if (res.success) setSessions(res.data || []);
+    } catch (e) {
+      console.error('Error refreshing sessions', e);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleApprove = async (sessionId: string) => {
+    try {
+      const res = await approveSessionProposalAction(sessionId);
+      if (res.success) {
+        setSessions(prev => prev.map(s => (s.session_id === sessionId ? { ...s, status: 'Confirmed' } : s)));
+      } else {
+        alert(res.error || 'Failed to approve');
+      }
+    } catch (e) {
+      alert((e as Error).message || 'Error');
+    }
+  };
+
+  const handleDecline = async (sessionId: string) => {
+    try {
+      const res = await declineSessionProposalAction(sessionId);
+      if (res.success) {
+        setSessions(prev => prev.map(s => (s.session_id === sessionId ? { ...s, status: 'Cancelled' } : s)));
+      } else {
+        alert(res.error || 'Failed to decline');
+      }
+    } catch (e) {
+      alert((e as Error).message || 'Error');
+    }
+  };
+
+  const openAttendanceModal = (session: VolunteerSession) => {
+    setAttendanceModal({ open: true, session, csv: '' });
+  };
+
+  const closeAttendanceModal = () => setAttendanceModal({ open: false });
+
+  const submitAttendance = async () => {
+    if (!attendanceModal.session) return;
+    const lines = (attendanceModal.csv || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const participants = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      return { student_name: parts[0] || null, attendance_status: parts[1] || null };
+    });
+    try {
+      const res = await logSessionAttendanceAction(attendanceModal.session.session_id, participants);
+      if (res.success) {
+        alert('Attendance logged');
+        closeAttendanceModal();
+        refreshSessions();
+      } else {
+        alert(res.error || 'Failed to log attendance');
+      }
+    } catch (e) {
+      alert((e as Error).message || 'Error');
+    }
+  };
+
+  const handleMarkComplete = async (sessionId: string) => {
+    try {
+      const res = await completeSessionAction(sessionId);
+      if (res.success) {
+        setSessions(prev => prev.map(s => (s.session_id === sessionId ? { ...s, status: 'Completed' } : s)));
+      } else {
+        alert(res.error || 'Failed to complete session');
+      }
+    } catch (e) {
+      alert((e as Error).message || 'Error');
+    }
+  };
 
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -192,6 +315,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
           phone: data.school.phone || '',
           location: data.school.address || '',
           description: data.school.description || '',
+          postalCode: data.school.postal_code || '',
+          bankAccountDetails: data.school.bank_account_details || '',
         });
       }
     } catch (error) {
@@ -542,62 +667,52 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
             Upcoming Volunteer Sessions
           </h3>
           <div className="space-y-3">
-            {[
-              { title: 'Math Tutoring', volunteer: 'Sarah Johnson', date: '2026-01-20', time: '10:00 AM', participants: 15 },
-              { title: 'Science Workshop', volunteer: 'Tech Volunteers Org', date: '2026-01-22', time: '2:00 PM', participants: 20 },
-              { title: 'Reading Circle', volunteer: 'Mike Davis', date: '2026-01-25', time: '11:00 AM', participants: 12 },
-            ].map((session, index) => (
-              <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">{session.title}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{session.volunteer}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {session.date}
-                      </span>
-                      <span className="flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {session.time}
-                      </span>
-                      <span className="flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        {session.participants} students
-                      </span>
+            {sessionsLoading ? (
+              <div className="text-sm text-gray-600">Loading sessions...</div>
+            ) : (
+              (sessions || [])
+                .filter(s => ['Confirmed', 'Approved', 'In Progress'].includes(s.status))
+                .slice(0, 6)
+                .map((session) => (
+                  <div key={session.session_id} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-1">{session.title}</h4>
+                        <p className="text-sm text-gray-600 mb-2">{session.profiles ? `${session.profiles.first_name} ${session.profiles.last_name}` : session.volunteer_id}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center">{new Date(session.session_date).toLocaleDateString()}</span>
+                          <span className="flex items-center">{session.start_time} - {session.end_time}</span>
+                          <span className="flex items-center">{session.registered_students || session.max_students || 0} students</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-3">
+                        <button onClick={() => {/* navigate to session detail if exists */}} className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition">View</button>
+                        <button onClick={() => openAttendanceModal(session)} className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">Log Attendance</button>
+                        {session.status !== 'Completed' && (
+                          <button onClick={() => handleMarkComplete(session.session_id)} className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition">Mark Completed</button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <button className="ml-3 px-3 py-1 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition">
-                    View
-                  </button>
-                </div>
-              </div>
-            ))}
+                ))
+            )}
           </div>
-          
+
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="font-semibold text-gray-900 mb-3 text-sm">Pending Proposals (2)</h4>
+            <h4 className="font-semibold text-gray-900 mb-3 text-sm">Pending Proposals</h4>
             <div className="space-y-2">
-              <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Computer Skills Workshop</p>
-                  <p className="text-xs text-gray-600">by IT Skills Organization</p>
+              {(sessions || []).filter(s => s.status === 'Proposed').map((s) => (
+                <div key={s.session_id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">{s.title}</p>
+                    <p className="text-xs text-gray-600">by {s.profiles ? `${s.profiles.first_name} ${s.profiles.last_name}` : s.volunteer_id}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleApprove(s.session_id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700">Approve</button>
+                    <button onClick={() => handleDecline(s.session_id)} className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300">Decline</button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700">
-                    Approve
-                  </button>
-                  <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300">
-                    Decline
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -713,6 +828,21 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
         </div>
       </div>
 
+      {/* Attendance Modal */}
+      {attendanceModal.open && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Log Attendance for {attendanceModal.session?.title}</h3>
+            <p className="text-sm text-gray-600 mb-4">Enter one participant per line as <strong>name,status</strong> (e.g. &quot;John Doe,Attended&quot;).</p>
+            <textarea value={attendanceModal.csv || ''} onChange={(e) => setAttendanceModal(prev => ({ ...prev, csv: e.target.value }))} rows={8} className="w-full border border-gray-300 rounded-lg p-3 mb-4" />
+            <div className="flex gap-3">
+              <button onClick={closeAttendanceModal} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={submitAttendance} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit Attendance</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -724,7 +854,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
             </div>
             <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete Request?</h3>
             <p className="text-gray-600 text-center mb-6">
-              Are you sure you want to delete "<strong>{deleteConfirm.title}</strong>"? This action cannot be undone.
+              Are you sure you want to delete <strong>&quot;{deleteConfirm.title}&quot;</strong>? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
@@ -812,7 +942,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select
                     value={editingRequest.category}
-                    onChange={(e) => setEditingRequest({...editingRequest, category: e.target.value as any})}
+                    onChange={(e) => setEditingRequest({...editingRequest, category: e.target.value as RequestCategory})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
                     <option value="" disabled>Select category</option>
@@ -831,7 +961,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                   <select
                     value={editingRequest.type}
-                    onChange={(e) => setEditingRequest({...editingRequest, type: e.target.value as any})}
+                    onChange={(e) => setEditingRequest({...editingRequest, type: e.target.value as RequestType})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
                     <option value="" disabled>Select type</option>
@@ -845,7 +975,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                   <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
                   <select
                     value={editingRequest.urgency}
-                    onChange={(e) => setEditingRequest({...editingRequest, urgency: e.target.value as any})}
+                    onChange={(e) => setEditingRequest({...editingRequest, urgency: e.target.value as Urgency})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                   >
                     <option value="" disabled>Select urgency</option>
@@ -883,7 +1013,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     type="number"
                     placeholder="e.g., 150"
                     value={editingRequest.students_impacted || ''}
-                    onChange={(e) => setEditingRequest({...editingRequest, students_impacted: parseInt(e.target.value) || undefined})}
+                    onChange={(e) => setEditingRequest({...editingRequest, students_impacted: parseInt(e.target.value) || null})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 edit-modal-placeholder"
                   />
                 </div>
@@ -994,6 +1124,28 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     value={profileData.description}
                     onChange={(e) => setProfileData({...profileData, description: e.target.value})}
                     rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code <span className="text-gray-500 text-xs">(Optional)</span></label>
+                  <input
+                    type="text"
+                    placeholder="Enter postal code"
+                    value={profileData.postalCode}
+                    onChange={(e) => setProfileData({...profileData, postalCode: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account Details <span className="text-gray-500 text-xs">(Optional)</span></label>
+                  <textarea
+                    placeholder="Enter bank account details for transactions (e.g., Account Holder Name, Account Number, Bank Name, IFSC Code)"
+                    value={profileData.bankAccountDetails}
+                    onChange={(e) => setProfileData({...profileData, bankAccountDetails: e.target.value})}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
                   />
                 </div>

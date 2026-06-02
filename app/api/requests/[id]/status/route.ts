@@ -4,9 +4,9 @@ import { AuthService } from '@/services/auth.service';
 import { revalidatePath } from 'next/cache';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function PUT(
@@ -25,6 +25,7 @@ export async function PUT(
 
     const body = await request.json();
     const { status } = body;
+    const { id } = await params;
 
     if (!status) {
       return NextResponse.json(
@@ -33,11 +34,11 @@ export async function PUT(
       );
     }
 
-    await RequestService.updateRequestStatus(user.id, params.id, status);
+    await RequestService.updateRequestStatus(user.id, id, status);
 
     // Revalidate paths
     revalidatePath('/requests');
-    revalidatePath(`/requests/${params.id}`);
+    revalidatePath(`/requests/${id}`);
     revalidatePath('/dashboard');
 
     return NextResponse.json(
