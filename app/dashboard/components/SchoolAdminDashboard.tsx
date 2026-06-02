@@ -48,6 +48,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
     phone: '',
     location: '',
     description: '',
+    postalCode: '',
+    bankAccountDetails: '',
   });
 
   // Sessions and attendance state
@@ -313,6 +315,8 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
           phone: data.school.phone || '',
           location: data.school.address || '',
           description: data.school.description || '',
+          postalCode: data.school.postal_code || '',
+          bankAccountDetails: data.school.bank_account_details || '',
         });
       }
     } catch (error) {
@@ -1120,6 +1124,28 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     value={profileData.description}
                     onChange={(e) => setProfileData({...profileData, description: e.target.value})}
                     rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code <span className="text-gray-500 text-xs">(Optional)</span></label>
+                  <input
+                    type="text"
+                    placeholder="Enter postal code"
+                    value={profileData.postalCode}
+                    onChange={(e) => setProfileData({...profileData, postalCode: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account Details <span className="text-gray-500 text-xs">(Optional)</span></label>
+                  <textarea
+                    placeholder="Enter bank account details for transactions (e.g., Account Holder Name, Account Number, Bank Name, IFSC Code)"
+                    value={profileData.bankAccountDetails}
+                    onChange={(e) => setProfileData({...profileData, bankAccountDetails: e.target.value})}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
                   />
                 </div>

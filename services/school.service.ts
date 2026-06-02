@@ -9,6 +9,8 @@ export interface RegisterSchoolInput {
   contact_person: string;
   phone?: string;
   email?: string;
+  postal_code?: string | null;
+  bank_account_details?: string | null;
 }
 
 export class SchoolService {

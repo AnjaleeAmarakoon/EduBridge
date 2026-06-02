@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { schoolName, email, phone } = await request.json();
+    const { schoolName, email, phone, postalCode, bankAccountDetails } = await request.json();
 
     // Get the school first
     const school = await SchoolService.getSchoolByUserId(user.id);
@@ -64,6 +64,8 @@ export async function PUT(request: NextRequest) {
       type: school.type, // Keep existing type
       phone,
       email,
+      postal_code: postalCode || null,
+      bank_account_details: bankAccountDetails || null,
     });
 
     return NextResponse.json(
