@@ -1,8 +1,12 @@
 import { RequestService } from '@/services/request.service';
 import Link from 'next/link';
 import RespondButton from './RespondButton';
-import { notFound } from 'next/navigation';
+import DonationModal from './DonationModal';
+import BackButton from '@/app/components/BackButton';
+import { notFound, redirect } from 'next/navigation';
 import type { RequestType } from '@/lib/types/database';
+import { createClient } from '@/lib/supabase/server';
+import { formatCurrency } from '@/lib/currency';
 
 interface School {
   name: string;
@@ -13,6 +17,7 @@ interface School {
 
 interface RequestDetail {
   request_id: string;
+  school_id: string;
   title: string;
   description: string;
   category: string;
@@ -32,14 +37,25 @@ interface RequestDetail {
 export default async function RequestDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  // Authentication check - require sign in to view details
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login?redirect=/requests/" + (await params).id);
+  }
+
+  const { id } = await params;
   let request: RequestDetail | null = null;
   let responseCount = 0;
   let error: string | null = null;
 
   try {
-    const result = await RequestService.getRequestById(params.id);
+    const result = await RequestService.getRequestById(id);
     request = result.request as RequestDetail;
     responseCount = result.responseCount;
   } catch (err) {
@@ -73,12 +89,7 @@ export default async function RequestDetailPage({
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
-        <Link href="/requests" className="inline-flex items-center text-purple-600 hover:text-purple-700 mb-6">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Requests
-        </Link>
+        <BackButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -172,10 +183,10 @@ export default async function RequestDetailPage({
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Funding Progress</h2>
                   <div className="flex justify-between text-sm mb-3">
                     <span className="text-gray-600">
-                      Raised: <span className="font-bold text-green-600 text-lg">${(request.raised_amount || 0).toLocaleString()}</span>
+                      Raised: <span className="font-bold text-green-600 text-lg">{formatCurrency(request.raised_amount || 0)}</span>
                     </span>
                     <span className="text-gray-600">
-                      Goal: <span className="font-bold text-lg">${(request.target_amount || 0).toLocaleString()}</span>
+                      Goal: <span className="font-bold text-lg">{formatCurrency(request.target_amount || 0)}</span>
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-4">
@@ -188,7 +199,7 @@ export default async function RequestDetailPage({
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">${((request.target_amount || 0) - (request.raised_amount || 0)).toLocaleString()} remaining</p>
+                  <p className="text-sm text-gray-600 mt-2">{formatCurrency((request.target_amount || 0) - (request.raised_amount || 0))} remaining</p>
                 </div>
               )}
 
@@ -246,9 +257,15 @@ export default async function RequestDetailPage({
               <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg p-6 text-white">
                 <h3 className="text-xl font-bold mb-3">Ready to Help?</h3>
                 <p className="mb-6 text-purple-100">
-                  Express your interest and make a difference in the lives of these students.
+                  {request.type === 'volunteer'
+                    ? 'Express your interest and make a difference in the lives of these students.'
+                    : 'Choose a donation type and support this request today.'}
                 </p>
-                <RespondButton requestId={request.request_id} requestType={request.type} />
+                {request.type === 'volunteer' ? (
+                  <RespondButton requestId={request.request_id} requestType={request.type} />
+                ) : (
+                  <DonationModal requestId={request.request_id} requestType={request.type} />
+                )}
               </div>
             )}
 

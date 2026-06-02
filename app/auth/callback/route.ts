@@ -19,10 +19,14 @@ type CookieOptions = {
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
+  console.log('[Callback] Full URL:', requestUrl.toString());
+  
   const token_hash = requestUrl.searchParams.get('token_hash')
   const type = requestUrl.searchParams.get('type') as EmailOtpType | null
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/dashboard'
+  
+  console.log('[Callback] Params:', { token_hash, type, code, next });
   
   // Check if there's an error from Supabase (expired link, etc.)
   const error = requestUrl.searchParams.get('error')
@@ -83,15 +87,19 @@ export async function GET(request: Request) {
 
   // Handle password reset with token_hash
   if (token_hash && type) {
+    console.log('[Callback] Verifying OTP for password reset...');
     const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     })
 
+    console.log('[Callback] Verify OTP result:', { error });
+
     if (!error) {
       if (type === 'recovery') {
-        // Create redirect response with auth cookies
-        const redirectResponse = NextResponse.redirect(new URL('/auth/reset-password', request.url))
+        console.log('[Callback] Redirecting to reset password page...');
+        // Create redirect response with auth cookies - just redirect to the form, session is already set
+        const redirectResponse = NextResponse.redirect(new URL('/auth/reset-password?verified=true', request.url))
         // Set all auth cookies in the redirect response
         cookiesToSet.forEach(({ name, value, options }) => {
           redirectResponse.cookies.set(name, value, options ?? {})

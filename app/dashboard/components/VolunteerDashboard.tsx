@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
+import CreateSessionModal from './CreateSessionModal';
+import { fetchVolunteerSessions } from '@/app/dashboard/actions';
 
 interface VolunteerDashboardProps {
   firstName: string;
@@ -10,7 +12,124 @@ interface VolunteerDashboardProps {
   organizationName?: string;
 }
 
+interface Session {
+  id: string;
+  title: string;
+  subject?: string;
+  session_date: string;
+  start_time: string;
+  end_time: string;
+  location?: string;
+  max_students?: number;
+  status: 'Proposed' | 'Approved' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled' | 'Rescheduled';
+  schools?: { name: string; type?: string; address?: string };
+  topic?: string;
+}
+
+interface Opportunity {
+  request_id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  type?: string;
+  urgency?: string;
+  status?: string;
+  required_volunteers?: number | null;
+  students_impacted?: number | null;
+  location?: string | null;
+  deadline_date?: string | null;
+  schools?: { name: string; type?: string; address?: string } | null;
+}
+
 export default function VolunteerDashboard({ firstName, isOrganization = false, organizationName }: VolunteerDashboardProps) {
+  const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState('Proposed');
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [oppsLoading, setOppsLoading] = useState(false);
+  const [oppsError, setOppsError] = useState<string | null>(null);
+
+  // Map status values to tab names for filtering
+  const getTabStatusFilter = (tab: string): string[] => {
+    switch (tab) {
+      case 'Proposed':
+        return ['Proposed'];
+      case 'Upcoming':
+        return ['Confirmed', 'Approved', 'In Progress'];
+      case 'Completed':
+        return ['Completed'];
+      case 'Cancelled':
+        return ['Cancelled', 'Rescheduled'];
+      default:
+        return ['Proposed'];
+    }
+  };
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchVolunteerSessions();
+        if (result.success) {
+          setSessions(result.data || []);
+        } else {
+          setError(result.error || 'Failed to load sessions');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSessions();
+    // Fetch teaching opportunities (requests made by schools)
+    const loadOpportunities = async () => {
+      setOppsLoading(true);
+      setOppsError(null);
+      try {
+        // Fetch only volunteer teaching requests
+        const res = await fetch('/api/requests?category=Volunteer%20Teaching&type=volunteer');
+        if (!res.ok) throw new Error('Failed to fetch opportunities');
+        const body = await res.json();
+        setOpportunities(body.requests || []);
+      } catch (err) {
+        setOppsError(err instanceof Error ? err.message : 'Failed to load opportunities');
+      } finally {
+        setOppsLoading(false);
+      }
+    };
+
+    loadOpportunities();
+  }, []);
+
+  const getFilteredSessions = () => {
+    const statusFilter = getTabStatusFilter(selectedTab);
+    return sessions.filter(session => statusFilter.includes(session.status));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Proposed':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'Approved':
+      case 'Confirmed':
+      case 'In Progress':
+        return 'bg-green-100 text-green-700';
+      case 'Completed':
+        return 'bg-blue-100 text-blue-700';
+      case 'Cancelled':
+      case 'Rescheduled':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const filteredSessions = getFilteredSessions();
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -140,6 +259,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
             description="Propose a new teaching session"
             variant="primary"
             gradient="bg-gradient-to-br from-purple-500 to-pink-600 text-white"
+            onClick={() => setIsCreateSessionOpen(true)}
             icon={
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -149,6 +269,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           <ActionButton
             title="Browse Requests"
             description="Find teaching opportunities"
+            href="/requests"
             gradient="bg-gradient-to-br from-blue-50 to-indigo-50"
             icon={
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,82 +311,100 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-200">
-          {['Upcoming', 'Proposed', 'Completed', 'Cancelled'].map((tab, index) => (
+          {['Proposed', 'Upcoming', 'Completed', 'Cancelled'].map((tab) => (
             <button
               key={tab}
+              onClick={() => setSelectedTab(tab)}
               className={`px-4 py-2 font-medium text-sm transition border-b-2 ${
-                index === 0
+                selectedTab === tab
                   ? 'text-purple-600 border-purple-600'
                   : 'text-gray-600 border-transparent hover:text-gray-900'
               }`}
             >
-              {tab}
+              {tab} ({filteredSessions.filter(s => {
+                const statusFilter = getTabStatusFilter(tab);
+                return statusFilter.includes(s.status);
+              }).length})
             </button>
           ))}
         </div>
 
-        {/* Upcoming Sessions */}
+        {/* Session List */}
         <div className="space-y-4">
-          {[
-            { title: 'Mathematics for Beginners', school: 'Sunrise School for the Blind', date: '2026-01-20', time: '10:00 AM - 12:00 PM', students: 25, topic: 'Basic Algebra', status: 'Confirmed' },
-            { title: 'Science Workshop', school: 'Hope School for Deaf', date: '2026-01-22', time: '2:00 PM - 4:00 PM', students: 30, topic: 'Physics Experiments', status: 'Confirmed' },
-            { title: 'English Literature', school: 'Rural Elementary', date: '2026-01-25', time: '9:00 AM - 11:00 AM', students: 20, topic: 'Creative Writing', status: 'Pending Materials' },
-          ].map((session, index) => (
-            <div key={index} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition bg-gradient-to-r from-white to-purple-50">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="font-bold text-gray-900 text-lg">{session.title}</h4>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      session.status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {session.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3 flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    {session.school}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading sessions...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600">{error}</p>
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No {selectedTab.toLowerCase()} sessions yet</p>
+            </div>
+          ) : (
+            filteredSessions.map((session) => (
+              <div key={session.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition bg-gradient-to-r from-white to-purple-50">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="font-bold text-gray-900 text-lg">{session.title}</h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}>
+                        {session.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3 flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
-                      {session.date}
-                    </span>
-                    <span className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {session.time}
-                    </span>
-                    <span className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      {session.students} students
-                    </span>
+                      {session.schools?.name || 'School'}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                      <span className="flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {new Date(session.session_date).toLocaleDateString()}
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {session.start_time} - {session.end_time}
+                      </span>
+                      {session.max_students && (
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          Max {session.max_students} students
+                        </span>
+                      )}
+                    </div>
+                    {session.topic && (
+                      <div className="mt-2 inline-flex items-center px-3 py-1 bg-purple-100 rounded-lg text-xs font-medium text-purple-700">
+                        Topic: {session.topic}
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-2 inline-flex items-center px-3 py-1 bg-purple-100 rounded-lg text-xs font-medium text-purple-700">
-                    Topic: {session.topic}
+                  <div className="flex flex-col gap-2 ml-4">
+                    <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition">
+                      View Details
+                    </button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                      Message School
+                    </button>
+                    {['Proposed', 'Confirmed', 'Approved'].includes(session.status) && (
+                      <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
+                        Cancel
+                      </button>
+                    )}
                   </div>
-                </div>
-                <div className="flex flex-col gap-2 ml-4">
-                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition">
-                    View Details
-                  </button>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-                    Message School
-                  </button>
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
-                    Cancel
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -296,62 +435,66 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { school: 'Valley School for Blind', subject: 'Computer Skills', level: 'Intermediate', location: 'New York', students: 15, date: 'Flexible', type: 'Blind' },
-            { school: 'Mountain Rural School', subject: 'Environmental Science', level: 'Beginner', location: 'Texas', students: 30, date: 'Weekly', type: 'Rural' },
-            { school: 'Lakeside Deaf School', subject: 'Art & Design', level: 'All Levels', location: 'California', students: 20, date: 'Bi-weekly', type: 'Deaf' },
-          ].map((opportunity, index) => (
-            <div key={index} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition bg-gradient-to-br from-white to-blue-50">
-              <div className="flex items-start justify-between mb-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  opportunity.type === 'Blind' ? 'bg-blue-100 text-blue-700' :
-                  opportunity.type === 'Deaf' ? 'bg-purple-100 text-purple-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  {opportunity.type} School
-                </span>
-                <button className="p-1 hover:bg-white rounded">
-                  <svg className="w-5 h-5 text-gray-400 hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
+          {oppsLoading ? (
+            <div className="col-span-3 text-center py-8">Loading opportunities...</div>
+          ) : oppsError ? (
+            <div className="col-span-3 text-center py-8 text-red-600">{oppsError}</div>
+          ) : opportunities.length === 0 ? (
+            <div className="col-span-3 text-center py-8">No teaching opportunities available</div>
+          ) : (
+            opportunities.map((opportunity) => (
+              <div key={opportunity.request_id} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition bg-gradient-to-br from-white to-blue-50">
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    opportunity.schools?.type === 'Blind' ? 'bg-blue-100 text-blue-700' :
+                    opportunity.schools?.type === 'Deaf' ? 'bg-purple-100 text-purple-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    {opportunity.schools?.type || 'School'} School
+                  </span>
+                  <button className="p-1 hover:bg-white rounded">
+                    <svg className="w-5 h-5 text-gray-400 hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <h4 className="font-bold text-gray-900 mb-1 text-lg">{opportunity.title}</h4>
+                <p className="text-sm text-gray-600 mb-3">{opportunity.schools?.name}</p>
+                
+                <div className="space-y-2 mb-4 text-xs text-gray-600">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    {opportunity.category || 'Volunteer Teaching'}
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    {opportunity.location || opportunity.schools?.address || 'Location not specified'}
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    {opportunity.students_impacted ? `${opportunity.students_impacted} students` : (opportunity.required_volunteers ? `${opportunity.required_volunteers} volunteers` : 'Students / Volunteers info')}
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Schedule: {opportunity.deadline_date || 'Flexible'}
+                  </div>
+                </div>
+                
+                <button className="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm">
+                  Offer to Help
                 </button>
               </div>
-              
-              <h4 className="font-bold text-gray-900 mb-1 text-lg">{opportunity.subject}</h4>
-              <p className="text-sm text-gray-600 mb-3">{opportunity.school}</p>
-              
-              <div className="space-y-2 mb-4 text-xs text-gray-600">
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  Level: {opportunity.level}
-                </div>
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  {opportunity.location}
-                </div>
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  {opportunity.students} students
-                </div>
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Schedule: {opportunity.date}
-                </div>
-              </div>
-              
-              <button className="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm">
-                Offer to Help
-              </button>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -597,6 +740,12 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           </div>
         </div>
       </div>
+
+      {/* Create Session Modal */}
+      <CreateSessionModal
+        isOpen={isCreateSessionOpen}
+        onClose={() => setIsCreateSessionOpen(false)}
+      />
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default async function Dashboard() {
 
   // Fetch school data if user is school admin
   let schoolData = null;
+  let schoolRequests = [];
   if (profile.role === 'school_admin') {
     const { data } = await supabase
       .from("schools")
@@ -41,6 +42,15 @@ export default async function Dashboard() {
     if (!schoolData) {
       redirect("/school/register");
     }
+
+    // Fetch school's requests
+    const { data: requests } = await supabase
+      .from("requests")
+      .select("*")
+      .eq("school_id", schoolData.school_id)
+      .order("created_at", { ascending: false });
+    
+    schoolRequests = requests || [];
   }
 
   return (
@@ -59,6 +69,7 @@ export default async function Dashboard() {
           <SchoolAdminDashboard
             schoolName={schoolData?.name || "Your School"}
             firstName={profile.first_name}
+            requests={schoolRequests}
           />
         )}
 

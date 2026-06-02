@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Request } from '@/lib/types/database';
+import { formatCurrency } from '@/lib/currency';
 
 interface RequestCardProps {
   request: Request & {
@@ -48,7 +49,7 @@ export default function RequestCard({ request }: RequestCardProps) {
                 {request.urgency}
               </span>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeColors[request.type]}`}>
-                {request.type === 'money' ? '💰 Money' : request.type === 'goods' ? '📦 Goods' : '👥 Volunteer'}
+                {request.type === 'money' ? 'Money' : request.type === 'goods' ? 'Goods' : 'Volunteer'}
               </span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 hover:text-purple-600 transition">
@@ -90,10 +91,10 @@ export default function RequestCard({ request }: RequestCardProps) {
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-600">
-                Raised: <span className="font-bold text-green-600">${request.raised_amount.toLocaleString()}</span>
+                Raised: <span className="font-bold text-green-600">{formatCurrency(request.raised_amount)}</span>
               </span>
               <span className="text-gray-600">
-                Goal: <span className="font-bold">${request.target_amount.toLocaleString()}</span>
+                Goal: <span className="font-bold">{formatCurrency(request.target_amount)}</span>
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">

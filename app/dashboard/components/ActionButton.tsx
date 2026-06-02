@@ -29,8 +29,8 @@ export default function ActionButton({
       <div className="w-12 h-12 bg-white bg-opacity-90 backdrop-blur rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-md">
         {icon}
       </div>
-      <h4 className="font-bold text-gray-900 mb-2 text-lg">{title}</h4>
-      <p className="text-sm text-gray-700">{description}</p>
+      <h4 className={`font-bold mb-2 text-lg ${variant === 'primary' ? 'text-white' : 'text-gray-900'}`}>{title}</h4>
+      <p className={`text-sm ${variant === 'primary' ? 'text-white text-opacity-90' : 'text-gray-700'}`}>{description}</p>
     </>
   );
 

@@ -1,14 +1,44 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
+import { fetchUrgentRequests } from '../actions';
+import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
 
 interface DonorDashboardProps {
   firstName: string;
 }
 
+interface UrgentRequest {
+  request_id: string;
+  title: string;
+  school_name: string;
+  urgency: string;
+  location: string;
+  students_impacted: number;
+  target_amount: number;
+  raised_amount: number;
+  type: string;
+  schools?: {
+    name: string;
+  };
+}
+
 export default function DonorDashboard({ firstName }: DonorDashboardProps) {
+  const [urgentRequests, setUrgentRequests] = useState<UrgentRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUrgentRequests().then((result) => {
+      if (result.success) {
+        setUrgentRequests(result.data);
+      } else {
+        setUrgentRequests([]);
+      }
+      setLoading(false);
+    });
+  }, []);
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -35,9 +65,9 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Donated"
-            value="$12,450"
+            value={formatCurrency(12450)}
             color="green"
-            trend={{ value: '+$2,500 this month', isPositive: true }}
+            trend={{ value: formatCurrencyTrend(2500) + ' this month', isPositive: true }}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -107,7 +137,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           />
           <StatCard
             title="Tax-Deductible"
-            value="$11,200"
+            value={formatCurrency(11200)}
             color="pink"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,6 +160,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           <ActionButton
             title="Browse Requests"
             description="Discover schools in need"
+            href="/requests"
             variant="primary"
             gradient="bg-gradient-to-br from-green-500 to-emerald-600 text-white"
             icon={
@@ -195,59 +226,65 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { school: 'Sunrise School for the Blind', request: 'Braille Learning Materials', amount: '$800', category: 'Education Materials', urgency: 'High', location: 'New York', students: 45 },
-            { school: 'Rural Elementary School', request: 'Clean Water System', amount: '$2,500', category: 'Infrastructure', urgency: 'Critical', location: 'Texas', students: 120 },
-            { school: 'Hope School for Deaf', request: 'Sign Language Resources', amount: '$600', category: 'Education Materials', urgency: 'High', location: 'California', students: 60 },
-          ].map((request, index) => (
-            <div key={index} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
-              <div className="flex items-start justify-between mb-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  request.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                }`}>
-                  {request.urgency}
-                </span>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
-              </div>
-              
-              <h4 className="font-bold text-gray-900 mb-2 text-lg">{request.request}</h4>
-              <p className="text-sm text-gray-600 mb-3 flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                {request.school}
-              </p>
-              
-              <div className="flex items-center gap-3 mb-4 text-xs text-gray-600">
-                <span className="flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  {request.location}
-                </span>
-                <span className="flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  {request.students} students
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div>
-                  <p className="text-xs text-gray-600">Goal</p>
-                  <p className="text-xl font-bold text-green-600">{request.amount}</p>
-                </div>
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
-                  Donate Now
-                </button>
-              </div>
+          {loading ? (
+            <div className="col-span-full flex justify-center py-8">
+              <div className="text-gray-600">Loading urgent requests...</div>
             </div>
-          ))}
+          ) : urgentRequests.length === 0 ? (
+            <div className="col-span-full flex justify-center py-8">
+              <div className="text-gray-600">No urgent requests at the moment.</div>
+            </div>
+          ) : (
+            urgentRequests.slice(0, 3).map((request) => (
+              <div key={request.request_id} className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all bg-gradient-to-br from-white to-gray-50">
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    request.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {request.urgency}
+                  </span>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">{request.title}</h4>
+                <p className="text-sm text-gray-600 mb-3 flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  {request.schools?.name || 'School'}
+                </p>
+                
+                <div className="flex items-center gap-3 mb-4 text-xs text-gray-600">
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    {request.location || 'Location'}
+                  </span>
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    {request.students_impacted} students
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div>
+                    <p className="text-xs text-gray-600">Goal</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(request.target_amount)}</p>
+                  </div>
+                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
+                    Donate Now
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -280,10 +317,10 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
             </thead>
             <tbody>
               {[
-                { school: 'Sunrise School', request: 'Braille Materials', type: 'Money', amount: '$800', status: 'Delivered', date: '2026-01-15' },
+                { school: 'Sunrise School', request: 'Braille Materials', type: 'Money', amount: formatCurrency(800), status: 'Delivered', date: '2026-01-15' },
                 { school: 'Hope School', request: 'Sign Language Books', type: 'Goods', amount: '25 Books', status: 'In Transit', date: '2026-01-14' },
-                { school: 'Rural Elementary', request: 'Water System', type: 'Money', amount: '$2,500', status: 'Confirmed', date: '2026-01-12' },
-                { school: 'City Middle School', request: 'Computer Lab', type: 'Money', amount: '$1,200', status: 'Pending', date: '2026-01-10' },
+                { school: 'Rural Elementary', request: 'Water System', type: 'Money', amount: formatCurrency(2500), status: 'Confirmed', date: '2026-01-12' },
+                { school: 'City Middle School', request: 'Computer Lab', type: 'Money', amount: formatCurrency(1200), status: 'Pending', date: '2026-01-10' },
               ].map((donation, index) => (
                 <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-4">
@@ -350,10 +387,10 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
               </div>
               <div className="space-y-3">
                 {[
-                  { category: 'Education Materials', amount: '$5,200', percentage: 42 },
-                  { category: 'Infrastructure', amount: '$4,100', percentage: 33 },
-                  { category: 'Technology', amount: '$2,150', percentage: 17 },
-                  { category: 'Other', amount: '$1,000', percentage: 8 },
+                  { category: 'Education Materials', amount: formatCurrency(5200), percentage: 42 },
+                  { category: 'Infrastructure', amount: formatCurrency(4100), percentage: 33 },
+                  { category: 'Technology', amount: formatCurrency(2150), percentage: 17 },
+                  { category: 'Other', amount: formatCurrency(1000), percentage: 8 },
                 ].map((item, index) => (
                   <div key={index}>
                     <div className="flex items-center justify-between mb-1">

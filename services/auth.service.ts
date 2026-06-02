@@ -177,19 +177,27 @@ export class AuthService {
    * Request password reset
    */
   static async requestPasswordReset(email: string) {
+    console.log('[AuthService] Starting password reset for:', email);
     const supabase = await createClient();
 
     if (!email) {
       throw new Error('Email is required');
     }
 
+    // Use callback route for proper token handling
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`;
+    console.log('[AuthService] Redirect URL:', redirectUrl);
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`,
+      redirectTo: redirectUrl,
     });
 
     if (error) {
+      console.error('[AuthService] Password reset error:', error);
       throw new Error(error.message);
     }
+
+    console.log('[AuthService] Password reset email sent successfully');
 
     return { success: true };
   }
