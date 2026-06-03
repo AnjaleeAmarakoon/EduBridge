@@ -62,6 +62,7 @@ export default async function RequestDetailPage({
 
   let responses: ResponseEntry[] = [];
   let error: string | null = null;
+  let isOwner = false;
 
   try {
     const result = await RequestService.getRequestById(id);
@@ -76,6 +77,7 @@ export default async function RequestDetailPage({
         .single();
 
       if (schoolOwner && schoolOwner.user_id === user?.id) {
+        isOwner = true;
         const { data: respData } = await supabase
           .from('request_responses')
           .select('*, profiles:profiles!user_id(first_name,last_name,email)')
@@ -304,7 +306,7 @@ export default async function RequestDetailPage({
             </div>
 
             {/* Action Card */}
-            {request.status === 'Open' && (
+            {request.status === 'Open' && !isOwner && (
               <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg p-6 text-white">
                 <h3 className="text-xl font-bold mb-3">Ready to Help?</h3>
                 <p className="mb-6 text-purple-100">
