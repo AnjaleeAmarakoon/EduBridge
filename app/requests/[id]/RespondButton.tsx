@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 interface RespondButtonProps {
   requestId: string;
   requestType: 'money' | 'goods' | 'volunteer';
+  triggerText?: string;
+  triggerClassName?: string;
 }
 
-export default function RespondButton({ requestId, requestType }: RespondButtonProps) {
+export default function RespondButton({ requestId, requestType, triggerText, triggerClassName }: RespondButtonProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -67,9 +69,9 @@ export default function RespondButton({ requestId, requestType }: RespondButtonP
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="w-full px-6 py-3 bg-white text-purple-600 rounded-lg font-bold hover:bg-purple-50 transition"
+        className={triggerClassName || "w-full px-6 py-3 bg-white text-purple-600 rounded-lg font-bold hover:bg-purple-50 transition"}
       >
-        Express Interest
+        {triggerText || 'Express Interest'}
       </button>
 
       {/* Modal */}

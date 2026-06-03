@@ -5,6 +5,7 @@ import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import CreateSessionModal from './CreateSessionModal';
 import { fetchVolunteerSessions } from '@/app/dashboard/actions';
+import RespondButton from '@/app/requests/[id]/RespondButton';
 
 interface VolunteerDashboardProps {
   firstName: string;
@@ -31,7 +32,7 @@ interface Opportunity {
   title: string;
   description?: string;
   category?: string;
-  type?: string;
+  type?: 'volunteer' | 'money' | 'goods';
   urgency?: string;
   status?: string;
   required_volunteers?: number | null;
@@ -173,9 +174,12 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           <h2 className="text-4xl font-bold mb-3">
             Welcome back, {firstName}! 
           </h2>
-          {isOrganization && organizationName && (
-            <p className="text-purple-100 text-lg mb-4">{organizationName}</p>
-          )}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold backdrop-blur-sm border border-white/30 shadow-sm">Volunteer Dashboard</span>
+            {isOrganization && organizationName && (
+              <p className="text-purple-100 text-lg">{organizationName}</p>
+            )}
+          </div>
           <p className="text-purple-50 max-w-2xl">
             {isOrganization 
               ? 'Manage your team, organize teaching sessions, and track your collective impact on students.'
@@ -522,9 +526,12 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
                   </div>
                 </div>
                 
-                <button className="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm">
-                  Offer to Help
-                </button>
+                <RespondButton
+                  requestId={opportunity.request_id}
+                  requestType={opportunity.type || 'volunteer'}
+                  triggerText="Offer to Help"
+                  triggerClassName="w-full py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition text-sm"
+                />
               </div>
             ))
           )}

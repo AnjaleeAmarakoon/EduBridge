@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   fetchSchoolSessions,
+  fetchSchoolDonations,
   approveSessionProposalAction,
   declineSessionProposalAction,
   logSessionAttendanceAction,
@@ -57,6 +58,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; session?: VolunteerSession; csv?: string }>({ open: false });
 
+  // Donations state
+  const [donations, setDonations] = useState<any[]>([]);
+  const [donationsLoading, setDonationsLoading] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -68,6 +73,16 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
         console.error('Failed to load school sessions', e);
       } finally {
         if (mounted) setSessionsLoading(false);
+      }
+
+      setDonationsLoading(true);
+      try {
+        const res = await fetchSchoolDonations();
+        if (res.success && mounted) setDonations(res.data || []);
+      } catch (e) {
+        console.error('Failed to load school donations', e);
+      } finally {
+        if (mounted) setDonationsLoading(false);
       }
     };
 
@@ -333,7 +348,10 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
         <div className="relative z-10">
           <h2 className="text-4xl font-bold mb-3">Welcome back, {firstName}! </h2>
-          <p className="text-blue-100 text-lg mb-4">{schoolName}</p>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold backdrop-blur-sm border border-white/30 shadow-sm">School Dashboard</span>
+            <p className="text-blue-100 text-lg">{schoolName}</p>
+          </div>
           <p className="text-blue-50 max-w-2xl">
             Manage your school profile, post resource requests, connect with donors and volunteers, and track your community support.
           </p>
@@ -620,41 +638,65 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
             Recent Donations
           </h3>
           <div className="space-y-3">
-            {[
-              { donor: 'John Smith', type: 'Money', amount: formatCurrency(500), request: 'Science Lab Equipment', status: 'Completed', date: '2026-01-16' },
-              { donor: 'Anonymous', type: 'Goods', amount: '20 Books', request: 'Library Books', status: 'In Transit', date: '2026-01-15' },
-              { donor: 'Tech Corp', type: 'Money', amount: formatCurrency(1200), request: 'Computer Lab', status: 'Pending', date: '2026-01-14' },
-            ].map((donation, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{donation.donor}</p>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        donation.type === 'Money' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {donation.type}
-                      </span>
+            {donationsLoading ? (
+              <div className="text-sm text-gray-600">Loading donations...</div>
+            ) : donations.length === 0 ? (
+              <div className="text-sm text-gray-600">No recent donations.</div>
+            ) : (
+              donations.slice(0, 5).map((donation) => {
+                const donorName = donation.is_anonymous ? 'Anonymous' : (donation.profiles ? `${donation.profiles.first_name} ${donation.profiles.last_name}` : 'Unknown');
+                const type = donation.donation_type === 'money' ? 'Money' : 'Goods';
+                
+                let amountStr = '';
+                if (donation.donation_type === 'money') {
+                  amountStr = formatCurrency(donation.amount || 0);
+                } else if (donation.items_donated && Array.isArray(donation.items_donated) && donation.items_donated.length > 0) {
+                  const firstItem = donation.items_donated[0];
+                  amountStr = `${firstItem.quantity || ''} ${firstItem.item || 'Items'}`;
+                } else {
+                  amountStr = 'Goods';
+                }
+                
+                const requestTitle = donation.requests ? donation.requests.title : 'General Donation';
+                const formattedDate = new Date(donation.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                });
+
+                return (
+                  <div key={donation.donation_id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-gray-900">{donorName}</p>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            type === 'Money' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {type}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{requestTitle}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-semibold text-gray-900">{amountStr}</span>
+                          <span className="text-xs text-gray-500">• {formattedDate}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600">{donation.request}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-semibold text-gray-900">{donation.amount}</span>
-                      <span className="text-xs text-gray-500">• {donation.date}</span>
-                    </div>
+                    <button className="ml-3 p-2 hover:bg-white rounded-lg transition" title={donation.status}>
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                    </button>
                   </div>
-                </div>
-                <button className="ml-3 p-2 hover:bg-white rounded-lg transition">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </div>
 
