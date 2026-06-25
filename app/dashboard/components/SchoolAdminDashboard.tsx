@@ -34,6 +34,24 @@ interface VolunteerSession {
   max_students?: number | null;
 }
 
+interface Donation {
+  donation_id: string;
+  donor_id: string;
+  donation_type: 'money' | 'goods';
+  amount?: number | null;
+  items_donated?: Record<string, unknown>[] | null;
+  status: string;
+  created_at: string;
+  is_anonymous?: boolean;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+  } | null;
+  requests?: {
+    title: string;
+  } | null;
+}
+
 export default function SchoolAdminDashboard({ schoolName, firstName, requests: initialRequests }: SchoolAdminDashboardProps) {
   const [requests, setRequests] = useState(initialRequests);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,7 +77,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
   const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; session?: VolunteerSession; csv?: string }>({ open: false });
 
   // Donations state
-  const [donations, setDonations] = useState<any[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
   const [donationsLoading, setDonationsLoading] = useState(false);
 
   useEffect(() => {
@@ -1122,7 +1140,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     placeholder="Enter school name"
                     value={profileData.schoolName}
                     onChange={(e) => setProfileData({...profileData, schoolName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
 
@@ -1133,7 +1151,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     placeholder="Enter school email"
                     value={profileData.email}
                     onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
 
@@ -1144,7 +1162,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     placeholder="Enter school phone number"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
 
@@ -1155,7 +1173,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     placeholder="Enter school location"
                     value={profileData.location}
                     onChange={(e) => setProfileData({...profileData, location: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
 
@@ -1177,7 +1195,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     placeholder="Enter postal code"
                     value={profileData.postalCode}
                     onChange={(e) => setProfileData({...profileData, postalCode: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
 
@@ -1188,7 +1206,7 @@ export default function SchoolAdminDashboard({ schoolName, firstName, requests: 
                     value={profileData.bankAccountDetails}
                     onChange={(e) => setProfileData({...profileData, bankAccountDetails: e.target.value})}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 profile-modal-placeholder text-gray-900"
                   />
                 </div>
               </div>
