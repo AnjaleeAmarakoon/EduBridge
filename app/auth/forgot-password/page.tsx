@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-export default function ForgotPassword() {
+function ForgotPasswordForm() {
   const searchParams = useSearchParams();
   const initialError = useMemo(() => {
     const errorParam = searchParams.get('error');
@@ -250,5 +250,17 @@ export default function ForgotPassword() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPassword() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div className="text-gray-500 font-medium animate-pulse">Loading forgot password form...</div>
+      </div>
+    }>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

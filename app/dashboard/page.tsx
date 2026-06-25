@@ -5,6 +5,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import SchoolAdminDashboard from "./components/SchoolAdminDashboard";
 import DonorDashboard from "./components/DonorDashboard";
 import VolunteerDashboard from "./components/VolunteerDashboard";
+import AdminDashboard from "./components/AdminDashboard";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -53,6 +54,19 @@ export default async function Dashboard() {
     schoolRequests = requests || [];
   }
 
+  if (profile.role === "admin") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <DashboardHeader
+          firstName={profile.first_name}
+          lastName={profile.last_name}
+          email={profile.email}
+        />
+        <AdminDashboard />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
@@ -82,17 +96,6 @@ export default async function Dashboard() {
             firstName={profile.first_name}
             isOrganization={false}
           />
-        )}
-
-        {profile.role === "admin" && (
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              System Administrator Dashboard
-            </h2>
-            <p className="text-gray-600">
-              Admin dashboard features coming soon...
-            </p>
-          </div>
         )}
       </main>
     </div>

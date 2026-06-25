@@ -108,7 +108,7 @@ export default function RespondButton({ requestId, requestType, triggerText, tri
                     step="0.01"
                     value={formData.offered_amount}
                     onChange={(e) => setFormData({ ...formData, offered_amount: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                     placeholder="Enter amount"
                   />
                 </div>
@@ -122,7 +122,7 @@ export default function RespondButton({ requestId, requestType, triggerText, tri
                   rows={4}
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                   placeholder="Tell the school about your interest..."
                 />
               </div>

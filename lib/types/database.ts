@@ -71,6 +71,8 @@ export interface Database {
           contact_person: string;
           phone: string | null;
           email: string | null;
+          postal_code: string | null;
+          bank_account_details: string | null;
           verified: boolean;
           created_at: string;
           updated_at: string;
@@ -84,6 +86,8 @@ export interface Database {
           contact_person: string;
           phone?: string | null;
           email?: string | null;
+          postal_code?: string | null;
+          bank_account_details?: string | null;
           verified?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -97,6 +101,8 @@ export interface Database {
           contact_person?: string;
           phone?: string | null;
           email?: string | null;
+          postal_code?: string | null;
+          bank_account_details?: string | null;
           verified?: boolean;
           created_at?: string;
           updated_at?: string;
