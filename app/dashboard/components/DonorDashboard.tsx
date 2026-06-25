@@ -26,7 +26,7 @@ interface FeedbackReview {
     role: string;
   } | null;
 }
-import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
+import { formatCurrency } from '@/lib/currency';
 import DonationModal from '@/app/requests/[id]/DonationModal';
 import { createClient } from '@/lib/supabase/client';
 import FeedbackModal from './FeedbackModal';
@@ -84,6 +84,40 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
     relatedSessionId?: string;
     relatedDonationId?: string;
   } | null>(null);
+
+  const donorStats = React.useMemo(() => {
+    const activeStatuses = ['Pending', 'Confirmed', 'In Transit'];
+    const validDonations = donations.filter(d => d.status !== 'Cancelled');
+    
+    const totalDonated = validDonations.reduce((sum, d) => d.donation_type === 'money' ? sum + (d.amount || 0) : sum, 0);
+    const donationsMade = validDonations.length;
+    
+    const uniqueSchools = new Set(
+      validDonations
+        .map(d => d.schools?.name || d.schools?.school_id || '')
+        .filter(name => name !== '')
+    );
+    const schoolsSupported = uniqueSchools.size;
+    
+    const activeDonations = donations.filter(d => activeStatuses.includes(d.status)).length;
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonthDonated = validDonations
+      .filter(d => d.donation_type === 'money' && new Date(d.created_at) >= startOfMonth)
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+      
+    const thisMonthCount = validDonations.filter(d => new Date(d.created_at) >= startOfMonth).length;
+
+    return {
+      totalDonated,
+      donationsMade,
+      schoolsSupported,
+      activeDonations,
+      thisMonthDonated,
+      thisMonthCount
+    };
+  }, [donations]);
 
   const refreshDonationsAndRatings = async () => {
     // Refresh donations
@@ -188,9 +222,9 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Donated"
-            value={formatCurrency(12450)}
+            value={formatCurrency(donorStats.totalDonated)}
             color="green"
-            trend={{ value: formatCurrencyTrend(2500) + ' this month', isPositive: true }}
+            trend={donorStats.thisMonthDonated > 0 ? { value: formatCurrency(donorStats.thisMonthDonated) + ' this month', isPositive: true } : undefined}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -199,9 +233,9 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           />
           <StatCard
             title="Donations Made"
-            value={34}
+            value={donorStats.donationsMade}
             color="blue"
-            trend={{ value: '+5 this month', isPositive: true }}
+            trend={donorStats.thisMonthCount > 0 ? { value: `+${donorStats.thisMonthCount} this month`, isPositive: true } : undefined}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -210,7 +244,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           />
           <StatCard
             title="Schools Supported"
-            value={15}
+            value={donorStats.schoolsSupported}
             color="purple"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +255,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
 
           <StatCard
             title="Active Donations"
-            value={8}
+            value={donorStats.activeDonations}
             color="indigo"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,7 +274,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           </svg>
           Quick Actions
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ActionButton
             title="Browse Requests"
             description="Discover schools in need"
@@ -257,6 +291,12 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
             title="My Donations"
             description="Track your contributions"
             gradient="bg-gradient-to-br from-blue-50 to-indigo-50"
+            onClick={() => {
+              const element = document.getElementById('recent-donations-section');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
             icon={
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -270,16 +310,6 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
             icon={
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-            }
-          />
-          <ActionButton
-            title="Tax Receipts"
-            description="Download donation records"
-            gradient="bg-gradient-to-br from-orange-50 to-red-50"
-            icon={
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
             }
           />
@@ -376,7 +406,7 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
       </div>
 
       {/* My Donations Overview */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+      <div id="recent-donations-section" className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-gray-900 flex items-center">
             <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,194 +518,98 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
         </div>
       </div>
 
-      {/* Two Column Layout */}
+      {/* Communications & Feedback */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Donation Analytics */}
+        {/* Messages */}
         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Donation Analytics
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center justify-between">
+            <span className="flex items-center">
+              <svg className="w-6 h-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              Conversations
+            </span>
+            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">5 New</span>
           </h3>
-          
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">Donations by Category</span>
-                <button className="text-xs text-blue-600 hover:underline">Export</button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { category: 'Education Materials', amount: formatCurrency(5200), percentage: 42 },
-                  { category: 'Infrastructure', amount: formatCurrency(4100), percentage: 33 },
-                  { category: 'Technology', amount: formatCurrency(2150), percentage: 17 },
-                  { category: 'Other', amount: formatCurrency(1000), percentage: 8 },
-                ].map((item, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-700">{item.category}</span>
-                      <span className="text-sm font-semibold text-gray-900">{item.amount}</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
-                        style={{ width: `${item.percentage}%` }}
-                      ></div>
+          <div className="space-y-2">
+            {[
+              { school: 'Sunrise School', message: 'Thank you for your generous donation...', time: '10m ago', unread: true },
+              { school: 'Hope School', message: 'Your goods have been received...', time: '1h ago', unread: true },
+              { school: 'Rural Elementary', message: 'We appreciate your support...', time: '3h ago', unread: false },
+            ].map((msg, index) => (
+              <div key={index} className={`p-3 rounded-lg cursor-pointer transition ${msg.unread ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className={`w-2 h-2 rounded-full ${msg.unread ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-sm">{msg.school}</p>
+                      <p className="text-xs text-gray-600 truncate">{msg.message}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Monthly Trend</h4>
-              <div className="flex items-end justify-between h-32 gap-2">
-                {[40, 60, 45, 80, 65, 90, 100].map((height, index) => (
-                  <div key={index} className="flex-1 flex flex-col items-center">
-                    <div className="w-full bg-gradient-to-t from-green-500 to-emerald-400 rounded-t hover:from-green-600 hover:to-emerald-500 transition"
-                      style={{ height: `${height}%` }}
-                    ></div>
-                    <span className="text-xs text-gray-500 mt-2">
-                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][index]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition text-sm">
-                Download Report
-              </button>
-              <button className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition text-sm">
-                Export CSV
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Communications & Feedback */}
-        <div className="space-y-6">
-          {/* Messages */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center justify-between">
-              <span className="flex items-center">
-                <svg className="w-6 h-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                Conversations
-              </span>
-              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">5 New</span>
-            </h3>
-            <div className="space-y-2">
-              {[
-                { school: 'Sunrise School', message: 'Thank you for your generous donation...', time: '10m ago', unread: true },
-                { school: 'Hope School', message: 'Your goods have been received...', time: '1h ago', unread: true },
-                { school: 'Rural Elementary', message: 'We appreciate your support...', time: '3h ago', unread: false },
-              ].map((msg, index) => (
-                <div key={index} className={`p-3 rounded-lg cursor-pointer transition ${msg.unread ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className={`w-2 h-2 rounded-full ${msg.unread ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm">{msg.school}</p>
-                        <p className="text-xs text-gray-600 truncate">{msg.message}</p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-500 ml-2">{msg.time}</span>
-                  </div>
+                  <span className="text-xs text-gray-500 ml-2">{msg.time}</span>
                 </div>
-              ))}
-            </div>
-            <button className="mt-4 w-full py-2 text-center text-purple-600 font-medium text-sm hover:bg-purple-50 rounded-lg transition">
-              View All Conversations
-            </button>
+              </div>
+            ))}
           </div>
-
-          {/* Feedback */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex flex-col gap-4">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
-              <span className="flex items-center">
-                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-                Feedback from Schools
-              </span>
-              {reviewsList.length > 0 && (
-                <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">
-                  {reviewsList.length}
-                </span>
-              )}
-            </h3>
-            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-              {reviewsLoading ? (
-                <p className="text-sm text-gray-500">Loading reviews...</p>
-              ) : reviewsList.length === 0 ? (
-                <p className="text-sm text-gray-500 italic text-center py-8 bg-gray-50 rounded-xl">No feedback received yet.</p>
-              ) : (
-                reviewsList.map((review) => (
-                  <div key={review.rating_id} className="p-4 bg-yellow-50/40 rounded-xl border border-yellow-100/70 shadow-sm hover:shadow transition">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-bold text-gray-900 text-sm">
-                          {review.rater?.first_name} {review.rater?.last_name}
-                        </p>
-                        <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold uppercase tracking-wider scale-95 origin-left">
-                          School
-                        </span>
-                      </div>
-                      <div className="flex text-amber-400 text-sm select-none">
-                        {'★'.repeat(review.rating)}
-                      </div>
-                    </div>
-                    {review.title && <p className="font-semibold text-gray-800 text-xs mb-1">{review.title}</p>}
-                    {review.comment && <p className="text-xs text-gray-700 leading-relaxed mb-2 break-words">{review.comment}</p>}
-                    {review.feedback_categories && review.feedback_categories.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {review.feedback_categories.map((cat: string) => (
-                          <span key={cat} className="px-2 py-0.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-[9px] font-medium">
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <span className="block text-[9px] text-gray-400 mt-2 text-right">
-                      {new Date(review.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <button className="mt-4 w-full py-2 text-center text-purple-600 font-medium text-sm hover:bg-purple-50 rounded-lg transition">
+            View All Conversations
+          </button>
         </div>
-      </div>
 
-      {/* Recommendations */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-lg p-6 border border-blue-100">
-        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          Recommended for You
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { school: 'Valley School for Blind', request: 'Audio Learning Devices', match: '95% Match' },
-            { school: 'Mountain Rural School', request: 'Sports Equipment', match: '88% Match' },
-            { school: 'Lakeside Deaf School', request: 'Visual Learning Tools', match: '92% Match' },
-          ].map((rec, index) => (
-            <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
-              <span className="inline-block px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold mb-2">
-                {rec.match}
+        {/* Feedback */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex flex-col gap-4">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+            <span className="flex items-center">
+              <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+              Feedback from Schools
+            </span>
+            {reviewsList.length > 0 && (
+              <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">
+                {reviewsList.length}
               </span>
-              <h4 className="font-semibold text-gray-900 mb-1">{rec.request}</h4>
-              <p className="text-sm text-gray-600 mb-3">{rec.school}</p>
-              <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-                View Request
-              </button>
-            </div>
-          ))}
+            )}
+          </h3>
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+            {reviewsLoading ? (
+              <p className="text-sm text-gray-500">Loading reviews...</p>
+            ) : reviewsList.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-8 bg-gray-50 rounded-xl">No feedback received yet.</p>
+            ) : (
+              reviewsList.map((review) => (
+                <div key={review.rating_id} className="p-4 bg-yellow-50/40 rounded-xl border border-yellow-100/70 shadow-sm hover:shadow transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-bold text-gray-900 text-sm">
+                        {review.rater?.first_name} {review.rater?.last_name}
+                      </p>
+                      <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold uppercase tracking-wider scale-95 origin-left">
+                        School
+                      </span>
+                    </div>
+                    <div className="flex text-amber-400 text-sm select-none">
+                      {'★'.repeat(review.rating)}
+                    </div>
+                  </div>
+                  {review.title && <p className="font-semibold text-gray-800 text-xs mb-1">{review.title}</p>}
+                  {review.comment && <p className="text-xs text-gray-700 leading-relaxed mb-2 break-words">{review.comment}</p>}
+                  {review.feedback_categories && review.feedback_categories.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {review.feedback_categories.map((cat: string) => (
+                        <span key={cat} className="px-2 py-0.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-[9px] font-medium">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <span className="block text-[9px] text-gray-400 mt-2 text-right">
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
