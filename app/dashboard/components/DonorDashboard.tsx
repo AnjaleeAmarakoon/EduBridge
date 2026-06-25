@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
-import { fetchUrgentRequests } from '../actions';
+import { fetchUrgentRequests, fetchDonorDonations } from '../actions';
 import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
 import DonationModal from '@/app/requests/[id]/DonationModal';
 
@@ -26,19 +26,46 @@ interface UrgentRequest {
   };
 }
 
+interface DonorDonation {
+  donation_id: string;
+  donation_type: 'money' | 'goods';
+  amount?: number | null;
+  items_donated?: Record<string, unknown> | null;
+  status: 'Pending' | 'Confirmed' | 'In Transit' | 'Delivered' | 'Cancelled';
+  created_at: string;
+  requests?: {
+    title: string;
+  } | null;
+  schools?: {
+    name: string;
+  } | null;
+}
+
 export default function DonorDashboard({ firstName }: DonorDashboardProps) {
   const [urgentRequests, setUrgentRequests] = useState<UrgentRequest[]>([]);
+  const [donations, setDonations] = useState<DonorDonation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [donationsLoading, setDonationsLoading] = useState(true);
 
   useEffect(() => {
-    fetchUrgentRequests().then((result) => {
-      if (result.success) {
-        setUrgentRequests(result.data);
-      } else {
-        setUrgentRequests([]);
-      }
-      setLoading(false);
-    });
+    Promise.all([
+      fetchUrgentRequests().then((result) => {
+        if (result.success) {
+          setUrgentRequests(result.data);
+        } else {
+          setUrgentRequests([]);
+        }
+        setLoading(false);
+      }),
+      fetchDonorDonations().then((result) => {
+        if (result.success) {
+          setDonations(result.data);
+        } else {
+          setDonations([]);
+        }
+        setDonationsLoading(false);
+      }),
+    ]);
   }, []);
   return (
     <div className="space-y-6">
@@ -283,53 +310,66 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
               </tr>
             </thead>
             <tbody>
-              {[
-                { school: 'Sunrise School', request: 'Braille Materials', type: 'Money', amount: formatCurrency(800), status: 'Delivered', date: '2026-01-15' },
-                { school: 'Hope School', request: 'Sign Language Books', type: 'Goods', amount: '25 Books', status: 'In Transit', date: '2026-01-14' },
-                { school: 'Rural Elementary', request: 'Water System', type: 'Money', amount: formatCurrency(2500), status: 'Confirmed', date: '2026-01-12' },
-                { school: 'City Middle School', request: 'Computer Lab', type: 'Money', amount: formatCurrency(1200), status: 'Pending', date: '2026-01-10' },
-              ].map((donation, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="font-medium text-gray-900">{donation.school}</div>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{donation.request}</td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      donation.type === 'Money' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {donation.type}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 font-semibold text-gray-900">{donation.amount}</td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      donation.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                      donation.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
-                      donation.status === 'Confirmed' ? 'bg-purple-100 text-purple-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {donation.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{donation.date}</td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 hover:bg-blue-50 rounded-lg transition" title="View">
-                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button className="p-2 hover:bg-purple-50 rounded-lg transition" title="Message">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                      </button>
-                    </div>
+              {donationsLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-4 px-4 text-center text-sm text-gray-600">
+                    Loading donations...
                   </td>
                 </tr>
-              ))}
+              ) : donations.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-4 px-4 text-center text-sm text-gray-600">
+                    No donations yet. Start making a difference today!
+                  </td>
+                </tr>
+              ) : (
+                donations.map((donation) => (
+                  <tr key={donation.donation_id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="font-medium text-gray-900">{donation.schools?.name || 'Unknown'}</div>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600">{donation.requests?.title || 'General Donation'}</td>
+                    <td className="py-4 px-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        donation.donation_type === 'money' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {donation.donation_type === 'money' ? 'Money' : 'Goods'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 font-semibold text-gray-900">
+                      {donation.donation_type === 'money' ? formatCurrency(donation.amount || 0) : 'Items'}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        donation.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        donation.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
+                        donation.status === 'Confirmed' ? 'bg-purple-100 text-purple-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {donation.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600">
+                      {new Date(donation.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex gap-2">
+                        <button className="p-2 hover:bg-blue-50 rounded-lg transition" title="View">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button className="p-2 hover:bg-purple-50 rounded-lg transition" title="Message">
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

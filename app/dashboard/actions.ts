@@ -240,3 +240,42 @@ export async function fetchSchoolDonations() {
     };
   }
 }
+
+export async function fetchDonorDonations() {
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, data: [], error: 'User not authenticated' };
+    }
+
+    const { data: donations, error } = await supabase
+      .from('donations')
+      .select(`
+        *,
+        requests:request_id (title),
+        schools:school_id (name)
+      `)
+      .eq('donor_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('Error fetching donor donations:', error);
+      return { success: false, data: [], error: error.message };
+    }
+
+    return { success: true, data: donations || [] };
+  } catch (error) {
+    console.error('Error in fetchDonorDonations:', error);
+    return {
+      success: false,
+      data: [],
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
