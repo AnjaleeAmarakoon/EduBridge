@@ -79,6 +79,26 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
   const [oppsError, setOppsError] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
+  const volunteerStats = React.useMemo(() => {
+    const completedSessions = sessions.filter(s => s.status === 'Completed').length;
+    const upcomingSessions = sessions.filter(s => ['Confirmed', 'Approved', 'In Progress'].includes(s.status)).length;
+    const proposedSessions = sessions.filter(s => s.status === 'Proposed').length;
+    const uniqueSchools = new Set(sessions.map(s => s.schools?.name).filter(Boolean));
+    const schoolsPartnered = uniqueSchools.size;
+    
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonthCompleted = sessions.filter(s => s.status === 'Completed' && new Date(s.session_date) >= startOfMonth).length;
+
+    return {
+      completedSessions,
+      upcomingSessions,
+      proposedSessions,
+      schoolsPartnered,
+      thisMonthCompleted
+    };
+  }, [sessions]);
+
   // Map status values to tab names for filtering
   const getTabStatusFilter = (tab: string): string[] => {
     switch (tab) {
@@ -321,9 +341,9 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Sessions Conducted"
-            value={42}
+            value={volunteerStats.completedSessions}
             color="purple"
-            trend={{ value: '+8 this month', isPositive: true }}
+            trend={volunteerStats.thisMonthCompleted > 0 ? { value: `+${volunteerStats.thisMonthCompleted} this month`, isPositive: true } : undefined}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -343,7 +363,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           />
           <StatCard
             title="Schools Partnered"
-            value={18}
+            value={volunteerStats.schoolsPartnered}
             color="green"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,7 +373,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           />
           <StatCard
             title="Upcoming Sessions"
-            value={6}
+            value={volunteerStats.upcomingSessions}
             color="orange"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,7 +383,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           />
           <StatCard
             title="Proposed Sessions"
-            value={4}
+            value={volunteerStats.proposedSessions}
             color="indigo"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,7 +393,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           />
           <StatCard
             title="Completed Sessions"
-            value={32}
+            value={volunteerStats.completedSessions}
             color="green"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,7 +403,7 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           />
           <StatCard
             title="Average Rating"
-            value="4.9"
+            value={ratingsSummary?.averageRating ? ratingsSummary.averageRating.toFixed(1) : '0.0'}
             color="teal"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -594,21 +614,6 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
             </svg>
             Available Teaching Opportunities
           </h3>
-          <div className="flex gap-2">
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-              <option>All Subjects</option>
-              <option>Math</option>
-              <option>Science</option>
-              <option>English</option>
-              <option>Arts</option>
-            </select>
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-              <option>All Locations</option>
-              <option>New York</option>
-              <option>California</option>
-              <option>Texas</option>
-            </select>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -863,56 +868,6 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         </div>
       </div>
 
-      {/* Organization Team Management (if applicable) */}
-      {isOrganization && (
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <svg className="w-6 h-6 mr-2 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Team Management
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { name: 'John Smith', role: 'Lead Instructor', sessions: 15, rating: 4.9, status: 'Active' },
-              { name: 'Sarah Johnson', role: 'Math Specialist', sessions: 12, rating: 4.8, status: 'Active' },
-              { name: 'Mike Davis', role: 'Science Teacher', sessions: 10, rating: 5.0, status: 'Active' },
-            ].map((member, index) => (
-              <div key={index} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full flex items-center justify-center">
-                    <span className="text-pink-700 font-bold text-lg">
-                      {member.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                    {member.status}
-                  </span>
-                </div>
-                <h4 className="font-bold text-gray-900">{member.name}</h4>
-                <p className="text-sm text-gray-600 mb-2">{member.role}</p>
-                <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
-                  <span>{member.sessions} sessions</span>
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 text-yellow-400 fill-current mr-1" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
-                    {member.rating}
-                  </span>
-                </div>
-                <button className="w-full py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition">
-                  View Details
-                </button>
-              </div>
-            ))}
-          </div>
-          
-          <button className="mt-4 w-full py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg font-medium hover:from-pink-700 hover:to-purple-700 transition">
-            + Add New Team Member
-          </button>
-        </div>
-      )}
 
       {/* Reports & Analytics */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">

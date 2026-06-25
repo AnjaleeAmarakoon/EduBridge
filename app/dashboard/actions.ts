@@ -261,8 +261,7 @@ export async function fetchDonorDonations() {
         schools:school_id (name, user_id, school_id)
       `)
       .eq('donor_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching donor donations:', error);
