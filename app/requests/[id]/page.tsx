@@ -60,10 +60,23 @@ export default async function RequestDetailPage({
     created_at?: string | null;
   }
 
+  interface FeedbackReview {
+    rating_id: string;
+    rating: number;
+    title: string | null;
+    comment: string | null;
+    is_anonymous: boolean;
+    rater?: {
+      first_name: string;
+      last_name: string;
+    } | null;
+  }
+
+  let ratingsSummary = null;
+  let schoolReviews: FeedbackReview[] = [];
   let responses: ResponseEntry[] = [];
   let error: string | null = null;
   let isOwner = false;
-
   try {
     const result = await RequestService.getRequestById(id);
     request = result.request as RequestDetail;
@@ -76,18 +89,46 @@ export default async function RequestDetailPage({
         .eq('school_id', request.school_id)
         .single();
 
-      if (schoolOwner && schoolOwner.user_id === user?.id) {
-        isOwner = true;
-        const { data: respData } = await supabase
-          .from('request_responses')
-          .select('*, profiles:profiles!user_id(first_name,last_name,email)')
-          .eq('request_id', id)
-          .order('created_at', { ascending: true });
+      if (schoolOwner) {
+        if (schoolOwner.user_id === user?.id) {
+          isOwner = true;
+          const { data: respData } = await supabase
+            .from('request_responses')
+            .select('*, profiles:profiles!user_id(first_name,last_name,email)')
+            .eq('request_id', id)
+            .order('created_at', { ascending: true });
 
-        responses = respData || [];
+          responses = respData || [];
+        }
+
+        // Fetch ratings summary
+        const { data: ratingsData } = await supabase
+          .from('ratings')
+          .select('rating')
+          .eq('ratee_id', schoolOwner.user_id);
+
+        if (ratingsData && ratingsData.length > 0) {
+          const totalReviews = ratingsData.length;
+          const sum = ratingsData.reduce((acc, curr) => acc + curr.rating, 0);
+          const averageRating = Math.round((sum / totalReviews) * 10) / 10;
+          ratingsSummary = { averageRating, totalReviews };
+        }
+
+        // Fetch recent reviews
+        const { data: reviewsData } = await supabase
+          .from('ratings')
+          .select('rating_id, rating, title, comment, is_anonymous, created_at, rater:profiles!rater_id(first_name, last_name)')
+          .eq('ratee_id', schoolOwner.user_id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        schoolReviews = (reviewsData || []).map(r => ({
+          ...r,
+          rater: (Array.isArray(r.rater) ? r.rater[0] : r.rater) || null
+        })) as unknown as FeedbackReview[];
       }
     } catch (e) {
-      console.error('Error fetching responses', e);
+      console.error('Error fetching responses/ratings', e);
     }
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load request';
@@ -283,25 +324,52 @@ export default async function RequestDetailPage({
             {/* School Info */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">School Information</h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600">School Name</p>
-                  <p className="font-semibold text-gray-900">{request.schools.name}</p>
+                  <p className="font-semibold text-gray-950">{request.schools.name}</p>
+                  {ratingsSummary && (
+                    <div className="flex items-center gap-1 mt-1 text-xs font-bold text-yellow-600">
+                      <span className="text-yellow-450 text-sm">★</span>
+                      <span>{ratingsSummary.averageRating} ({ratingsSummary.totalReviews} {ratingsSummary.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Type</p>
-                  <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                  <span className="inline-block px-3 py-1 bg-purple-105 text-purple-800 rounded-full text-xs font-bold">
                     {request.schools.type}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Address</p>
-                  <p className="text-gray-900">{request.schools.address}</p>
+                  <p className="text-gray-900 text-sm">{request.schools.address}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Contact Person</p>
-                  <p className="text-gray-900">{request.schools.contact_person}</p>
+                  <p className="text-gray-900 text-sm">{request.schools.contact_person}</p>
                 </div>
+
+                {schoolReviews.length > 0 && (
+                  <div className="pt-4 border-t border-gray-150 mt-4 animate-fadeIn">
+                    <p className="text-sm font-bold text-gray-800 mb-3">Recent Reviews</p>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                      {schoolReviews.map((rev) => {
+                        const raterName = rev.is_anonymous ? 'Anonymous' : (rev.rater ? `${rev.rater.first_name} ${rev.rater.last_name}` : 'User');
+                        return (
+                          <div key={rev.rating_id} className="p-3 bg-slate-50/50 rounded-xl border border-gray-150 text-2xs shadow-sm hover:shadow transition">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold text-slate-800">{raterName}</span>
+                              <span className="text-amber-500 font-bold">{rev.rating} ★</span>
+                            </div>
+                            {rev.title && <p className="font-bold text-slate-800 mb-0.5">{rev.title}</p>}
+                            {rev.comment && <p className="text-slate-600 leading-relaxed break-words">{rev.comment}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

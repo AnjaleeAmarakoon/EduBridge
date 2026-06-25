@@ -4,8 +4,32 @@ import React, { useEffect, useState } from 'react';
 import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import { fetchUrgentRequests, fetchDonorDonations } from '../actions';
+import {
+  getReviewsListAction,
+  getPendingFeedbackAction,
+  type PendingDonation,
+  type PendingSession
+} from '../actions.feedback';
+
+interface FeedbackReview {
+  rating_id: string;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  feedback_categories: string[];
+  is_anonymous: boolean;
+  is_verified: boolean;
+  created_at: string;
+  rater?: {
+    first_name: string;
+    last_name: string;
+    role: string;
+  } | null;
+}
 import { formatCurrency, formatCurrencyTrend } from '@/lib/currency';
 import DonationModal from '@/app/requests/[id]/DonationModal';
+import { createClient } from '@/lib/supabase/client';
+import FeedbackModal from './FeedbackModal';
 
 interface DonorDashboardProps {
   firstName: string;
@@ -38,6 +62,8 @@ interface DonorDonation {
   } | null;
   schools?: {
     name: string;
+    user_id?: string;
+    school_id?: string;
   } | null;
 }
 
@@ -47,25 +73,92 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [donationsLoading, setDonationsLoading] = useState(true);
 
+  // Feedback states
+  const [reviewsList, setReviewsList] = useState<FeedbackReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [pendingFeedback, setPendingFeedback] = useState<{ donations: PendingDonation[]; sessions: PendingSession[] }>({ donations: [], sessions: [] });
+  const [feedbackModalTarget, setFeedbackModalTarget] = useState<{
+    rateeId: string;
+    rateeName: string;
+    ratingType: 'session' | 'donation' | 'volunteer' | 'school' | 'donor';
+    relatedSessionId?: string;
+    relatedDonationId?: string;
+  } | null>(null);
+
+  const refreshDonationsAndRatings = async () => {
+    // Refresh donations
+    const donRes = await fetchDonorDonations();
+    if (donRes.success) {
+      setDonations(donRes.data);
+    }
+    
+    // Refresh ratings
+    const clientSupabase = createClient();
+    const { data: { user } } = await clientSupabase.auth.getUser();
+    if (user) {
+      const rev = await getReviewsListAction(user.id);
+      if (rev.success) {
+        setReviewsList(rev.reviews || []);
+      }
+      const pending = await getPendingFeedbackAction();
+      if (pending.success) {
+        setPendingFeedback({
+          donations: pending.donations || [],
+          sessions: pending.sessions || []
+        });
+      }
+    }
+  };
+
   useEffect(() => {
+    let mounted = true;
     Promise.all([
       fetchUrgentRequests().then((result) => {
-        if (result.success) {
+        if (result.success && mounted) {
           setUrgentRequests(result.data);
-        } else {
+        } else if (mounted) {
           setUrgentRequests([]);
         }
-        setLoading(false);
+        if (mounted) setLoading(false);
       }),
       fetchDonorDonations().then((result) => {
-        if (result.success) {
+        if (result.success && mounted) {
           setDonations(result.data);
-        } else {
+        } else if (mounted) {
           setDonations([]);
         }
-        setDonationsLoading(false);
+        if (mounted) setDonationsLoading(false);
       }),
     ]);
+
+    // Fetch user and feedback reviews
+    const loadFeedbackData = async () => {
+      try {
+        const clientSupabase = createClient();
+        const { data: { user } } = await clientSupabase.auth.getUser();
+        if (user && mounted) {
+          setReviewsLoading(true);
+          const rev = await getReviewsListAction(user.id);
+          if (rev.success && mounted) {
+            setReviewsList(rev.reviews || []);
+          }
+          if (mounted) setReviewsLoading(false);
+
+          const pending = await getPendingFeedbackAction();
+          if (pending.success && mounted) {
+            setPendingFeedback({
+              donations: pending.donations || [],
+              sessions: pending.sessions || []
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load donor reviews', e);
+      }
+    };
+
+    loadFeedbackData();
+    return () => { mounted = false; };
   }, []);
   return (
     <div className="space-y-6">
@@ -360,6 +453,26 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
+                        {pendingFeedback.donations.some(d => d.donation_id === donation.donation_id) && donation.schools?.user_id && (
+                          <button
+                            onClick={() => {
+                              if (donation.schools?.user_id) {
+                                setFeedbackModalTarget({
+                                  rateeId: donation.schools.user_id,
+                                  rateeName: donation.schools.name,
+                                  ratingType: 'school',
+                                  relatedDonationId: donation.donation_id
+                                });
+                              }
+                            }}
+                            className="p-2 hover:bg-yellow-50 rounded-lg transition text-yellow-600"
+                            title="Rate School"
+                          >
+                            <svg className="w-4 h-4 fill-current animate-pulse" viewBox="0 0 24 24">
+                              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                            </svg>
+                          </button>
+                        )}
                         <button className="p-2 hover:bg-purple-50 rounded-lg transition" title="Message">
                           <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -481,33 +594,58 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           </div>
 
           {/* Feedback */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-              Recent Feedback
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex flex-col gap-4">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+              <span className="flex items-center">
+                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                Feedback from Schools
+              </span>
+              {reviewsList.length > 0 && (
+                <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">
+                  {reviewsList.length}
+                </span>
+              )}
             </h3>
-            <div className="space-y-3">
-              {[
-                { school: 'Sunrise School', rating: 5, comment: 'Your contribution helped 45 students access braille materials!', date: '2 days ago' },
-                { school: 'Rural Elementary', rating: 5, comment: 'The water system is now operational. Thank you!', date: '5 days ago' },
-              ].map((feedback, index) => (
-                <div key={index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-gray-900 text-sm">{feedback.school}</p>
-                    <div className="flex">
-                      {[...Array(feedback.rating)].map((_, i) => (
-                        <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                        </svg>
-                      ))}
+            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+              {reviewsLoading ? (
+                <p className="text-sm text-gray-500">Loading reviews...</p>
+              ) : reviewsList.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-8 bg-gray-50 rounded-xl">No feedback received yet.</p>
+              ) : (
+                reviewsList.map((review) => (
+                  <div key={review.rating_id} className="p-4 bg-yellow-50/40 rounded-xl border border-yellow-100/70 shadow-sm hover:shadow transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-gray-900 text-sm">
+                          {review.rater?.first_name} {review.rater?.last_name}
+                        </p>
+                        <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold uppercase tracking-wider scale-95 origin-left">
+                          School
+                        </span>
+                      </div>
+                      <div className="flex text-amber-400 text-sm select-none">
+                        {'★'.repeat(review.rating)}
+                      </div>
                     </div>
+                    {review.title && <p className="font-semibold text-gray-800 text-xs mb-1">{review.title}</p>}
+                    {review.comment && <p className="text-xs text-gray-700 leading-relaxed mb-2 break-words">{review.comment}</p>}
+                    {review.feedback_categories && review.feedback_categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {review.feedback_categories.map((cat: string) => (
+                          <span key={cat} className="px-2 py-0.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-full text-[9px] font-medium">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <span className="block text-[9px] text-gray-400 mt-2 text-right">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-700 mb-2">{feedback.comment}</p>
-                  <p className="text-xs text-gray-500">{feedback.date}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -540,6 +678,18 @@ export default function DonorDashboard({ firstName }: DonorDashboardProps) {
           ))}
         </div>
       </div>
+
+      {feedbackModalTarget && (
+        <FeedbackModal
+          isOpen={!!feedbackModalTarget}
+          onClose={() => setFeedbackModalTarget(null)}
+          onSubmitSuccess={refreshDonationsAndRatings}
+          rateeId={feedbackModalTarget.rateeId}
+          rateeName={feedbackModalTarget.rateeName}
+          ratingType={feedbackModalTarget.ratingType}
+          relatedDonationId={feedbackModalTarget.relatedDonationId}
+        />
+      )}
     </div>
   );
 }
