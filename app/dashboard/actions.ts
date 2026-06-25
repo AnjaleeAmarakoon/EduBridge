@@ -258,7 +258,7 @@ export async function fetchDonorDonations() {
       .select(`
         *,
         requests:request_id (title),
-        schools:school_id (name)
+        schools:school_id (name, user_id, school_id)
       `)
       .eq('donor_id', user.id)
       .order('created_at', { ascending: false })

@@ -5,7 +5,33 @@ import StatCard from './StatCard';
 import ActionButton from './ActionButton';
 import CreateSessionModal from './CreateSessionModal';
 import { fetchVolunteerSessions } from '@/app/dashboard/actions';
+import {
+  getPendingFeedbackAction,
+  getReviewsListAction,
+  getRatingsSummaryAction,
+  type RatingSummary,
+  type PendingDonation,
+  type PendingSession
+} from '@/app/dashboard/actions.feedback';
+
+interface FeedbackReview {
+  rating_id: string;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  feedback_categories: string[];
+  is_anonymous: boolean;
+  is_verified: boolean;
+  created_at: string;
+  rater?: {
+    first_name: string;
+    last_name: string;
+    role: string;
+  } | null;
+}
 import RespondButton from '@/app/requests/[id]/RespondButton';
+import { createClient } from '@/lib/supabase/client';
+import FeedbackModal from './FeedbackModal';
 
 interface VolunteerDashboardProps {
   firstName: string;
@@ -69,13 +95,75 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
     }
   };
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [ratingsSummary, setRatingsSummary] = useState<RatingSummary | null>(null);
+  const [reviewsList, setReviewsList] = useState<FeedbackReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [pendingFeedback, setPendingFeedback] = useState<{ donations: PendingDonation[]; sessions: PendingSession[] }>({ donations: [], sessions: [] });
+  const [feedbackModalTarget, setFeedbackModalTarget] = useState<{
+    rateeId: string;
+    rateeName: string;
+    ratingType: 'session' | 'donation' | 'volunteer' | 'school' | 'donor';
+    relatedSessionId?: string;
+    relatedDonationId?: string;
+  } | null>(null);
+
+  const refreshSessionsAndRatings = async () => {
+    // Refresh sessions
+    try {
+      const result = await fetchVolunteerSessions();
+      if (result.success) {
+        const mapped = (result.data || []).map((s) => ({
+          id: s.session_id || s.id,
+          title: s.title,
+          subject: s.subject,
+          session_date: s.session_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          location: s.location,
+          max_students: s.max_students,
+          status: s.status,
+          schools: s.schools || s.schools || (s.schools ? s.schools : s.school),
+          topic: s.topic,
+        }));
+        setSessions(mapped || []);
+      }
+    } catch (e) {
+      console.error('Error refreshing sessions', e);
+    }
+
+    // Refresh ratings
+    if (currentUserId) {
+      try {
+        const sum = await getRatingsSummaryAction(currentUserId);
+        setRatingsSummary(sum);
+        
+        const rev = await getReviewsListAction(currentUserId);
+        if (rev.success) {
+          setReviewsList(rev.reviews || []);
+        }
+
+        const pending = await getPendingFeedbackAction();
+        if (pending.success) {
+          setPendingFeedback({
+            donations: pending.donations || [],
+            sessions: pending.sessions || []
+          });
+        }
+      } catch (e) {
+        console.error('Error refreshing ratings', e);
+      }
+    }
+  };
+
   useEffect(() => {
+    let mounted = true;
     const loadSessions = async () => {
       setLoading(true);
       setError(null);
       try {
         const result = await fetchVolunteerSessions();
-        if (result.success) {
+        if (result.success && mounted) {
           // Normalize session id field
           const mapped = (result.data || []).map((s) => ({
             id: s.session_id || s.id,
@@ -92,13 +180,13 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           }));
 
           setSessions(mapped || []);
-        } else {
+        } else if (mounted) {
           setError(result.error || 'Failed to load sessions');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        if (mounted) setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
@@ -112,16 +200,50 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         const res = await fetch('/api/requests?category=Volunteer%20Teaching&type=volunteer');
         if (!res.ok) throw new Error('Failed to fetch opportunities');
         const body = await res.json();
-        setOpportunities(body.requests || []);
+        if (mounted) setOpportunities(body.requests || []);
       } catch (err) {
-        setOppsError(err instanceof Error ? err.message : 'Failed to load opportunities');
+        if (mounted) setOppsError(err instanceof Error ? err.message : 'Failed to load opportunities');
       } finally {
-        setOppsLoading(false);
+        if (mounted) setOppsLoading(false);
       }
     };
 
     loadOpportunities();
-  }, []);
+
+    // Fetch user ratings
+    const loadFeedbackData = async () => {
+      try {
+        const clientSupabase = createClient();
+        const { data: { user } } = await clientSupabase.auth.getUser();
+        if (user && mounted) {
+          setCurrentUserId(user.id);
+          
+          const sum = await getRatingsSummaryAction(user.id);
+          if (mounted) setRatingsSummary(sum);
+
+          setReviewsLoading(true);
+          const rev = await getReviewsListAction(user.id);
+          if (rev.success && mounted) {
+            setReviewsList(rev.reviews || []);
+          }
+          if (mounted) setReviewsLoading(false);
+
+          const pending = await getPendingFeedbackAction();
+          if (pending.success && mounted) {
+            setPendingFeedback({
+              donations: pending.donations || [],
+              sessions: pending.sessions || []
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load volunteer ratings', e);
+      }
+    };
+
+    loadFeedbackData();
+    return () => { mounted = false; };
+  }, [currentUserId]);
 
   const getFilteredSessions = () => {
     const statusFilter = getTabStatusFilter(selectedTab);
@@ -432,6 +554,24 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
                     <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
                       Message School
                     </button>
+                    {session.status === 'Completed' && pendingFeedback.sessions.some(s => s.session_id === session.id) && (
+                      <button
+                        onClick={() => {
+                          const matchedSession = pendingFeedback.sessions.find(s => s.session_id === session.id);
+                          if (matchedSession && matchedSession.schools?.user_id) {
+                            setFeedbackModalTarget({
+                              rateeId: matchedSession.schools.user_id,
+                              rateeName: matchedSession.schools.name || 'School',
+                              ratingType: 'school',
+                              relatedSessionId: session.id
+                            });
+                          }
+                        }}
+                        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-semibold transition shadow"
+                      >
+                        Rate School
+                      </button>
+                    )}
                     {['Proposed', 'Confirmed', 'Approved'].includes(session.status) && (
                       <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
                         Cancel
@@ -647,52 +787,78 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
           </div>
 
           {/* Feedback Summary */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-              Recent Feedback
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex flex-col gap-4">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+              <span className="flex items-center">
+                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                Feedback from Schools
+              </span>
+              {reviewsList.length > 0 && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-2xs font-semibold">
+                  {reviewsList.length}
+                </span>
+              )}
             </h3>
             
-            <div className="flex items-center gap-4 mb-4">
-              <div className="text-4xl font-bold text-gray-900">4.9</div>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="text-4xl font-bold text-gray-900">{ratingsSummary?.averageRating || '0.0'}</div>
               <div>
                 <div className="flex items-center mb-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <svg key={star} className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const avg = ratingsSummary?.averageRating || 0;
+                    const fillStar = star <= Math.round(avg);
+                    return (
+                      <svg key={star} className={`w-5 h-5 ${fillStar ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20">
+                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                      </svg>
+                    );
+                  })}
                 </div>
-                <p className="text-sm text-gray-600">Based on 38 reviews</p>
+                <p className="text-sm text-gray-600">Based on {ratingsSummary?.totalReviews || 0} reviews</p>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {[
-                { school: 'Sunrise School', comment: 'Excellent teaching methods! Students loved it.', rating: 5 },
-                { school: 'Hope School', comment: 'Very engaging and well-prepared.', rating: 5 },
-              ].map((feedback, index) => (
-                <div key={index} className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-gray-900 text-sm">{feedback.school}</p>
-                    <div className="flex">
-                      {[...Array(feedback.rating)].map((_, i) => (
-                        <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                        </svg>
-                      ))}
+            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+              {reviewsLoading ? (
+                <p className="text-xs text-gray-500">Loading reviews...</p>
+              ) : reviewsList.length === 0 ? (
+                <p className="text-xs text-gray-500 italic text-center py-6 bg-gray-50 rounded-lg">No reviews received yet.</p>
+              ) : (
+                reviewsList.map((review) => (
+                  <div key={review.rating_id} className="p-3 bg-yellow-50/40 rounded-xl border border-yellow-100 text-xs shadow-sm hover:shadow transition">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-gray-800">
+                          {review.rater?.first_name} {review.rater?.last_name}
+                        </span>
+                        <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-bold uppercase tracking-wider scale-95 origin-left">
+                          School
+                        </span>
+                      </div>
+                      <div className="flex text-amber-400 text-sm select-none">
+                        {'★'.repeat(review.rating)}
+                      </div>
                     </div>
+                    {review.title && <p className="font-bold text-gray-800 mb-0.5">{review.title}</p>}
+                    {review.comment && <p className="text-gray-600 leading-relaxed break-words">{review.comment}</p>}
+                    {review.feedback_categories && review.feedback_categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {review.feedback_categories.map((cat: string) => (
+                          <span key={cat} className="px-1.5 py-0.5 bg-indigo-50 border border-indigo-150 text-indigo-600 rounded-full text-[9px] font-medium">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <span className="block text-[9px] text-gray-400 mt-2 text-right">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-700">{feedback.comment}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-
-            <button className="mt-4 w-full py-2 text-center text-yellow-700 font-medium text-sm hover:bg-yellow-50 rounded-lg transition border border-yellow-200">
-              View All Feedback
-            </button>
           </div>
         </div>
       </div>
@@ -783,6 +949,18 @@ export default function VolunteerDashboard({ firstName, isOrganization = false, 
         isOpen={isCreateSessionOpen}
         onClose={() => setIsCreateSessionOpen(false)}
       />
+
+      {feedbackModalTarget && (
+        <FeedbackModal
+          isOpen={!!feedbackModalTarget}
+          onClose={() => setFeedbackModalTarget(null)}
+          onSubmitSuccess={refreshSessionsAndRatings}
+          rateeId={feedbackModalTarget.rateeId}
+          rateeName={feedbackModalTarget.rateeName}
+          ratingType={feedbackModalTarget.ratingType}
+          relatedSessionId={feedbackModalTarget.relatedSessionId}
+        />
+      )}
     </div>
   );
 }
